@@ -176,7 +176,7 @@ static void classify(Classification *cl, mdjvu_pattern_t p,
         next_c = c->next_class; /* That's because c may be deleted in merging */
 
         if (class_of_this == c) continue;
-        if (c->last_page < page - 1) continue; /* multipage optimization */
+
         if (compare_to_class(p, c, dpi, options, -1) ||
             !compare_to_class(p, c, dpi, options, 1)) continue;
 
