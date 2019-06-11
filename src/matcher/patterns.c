@@ -302,13 +302,9 @@ static int32 distance_by_pixeldiff_functions(Image *i1, Image *i2,
 static int32 pithdiff_compare_row(byte *row1, byte *row2, int32 n)
 {
     int32 i, s = 0;
-    for (i = 0; i < n; i++)
-    {
-        int32 k = row1[i], l = row2[i];
-        if (k == 255)
-            s += 255 - l;
-        else if (l == 255)
-            s += 255 - k;
+    for (i = 0; i < n; i++) {
+        if (row1[i] == 0xFF || row2[i] == 0xFF)
+            s += fabs(row1[i] - row2[i]);
     }
     return s;
 }
@@ -450,13 +446,13 @@ static unsigned char **quick_thin(unsigned char **pixels, int w, int h, int N)
 
     clear_bitmap(buf, w, h);
     invert_bitmap(aux, w, h, 0);
-    
+
     while (N--)
     {
         sweep(buf, aux, w, h);
         assign_bitmap(aux, buf, w, h);
     }
-    
+
     invert_bitmap(buf, w, h, 0);
 
     free_bitmap_with_margins(aux);
