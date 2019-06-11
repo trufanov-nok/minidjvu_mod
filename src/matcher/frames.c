@@ -75,7 +75,7 @@
 
 typedef unsigned char byte;
 
-static int donut_connectivity_test(byte *upper, byte *row, byte *lower)/*{{{*/
+static int donut_connectivity_test(byte ul, byte u, byte ur, byte l, byte r, byte dl, byte d, byte dr)/*{{{*/
 {
     /*(on the pictures below 0 is white, 1 is black or gray)
      *
@@ -90,10 +90,7 @@ static int donut_connectivity_test(byte *upper, byte *row, byte *lower)/*{{{*/
      * all others -> 0
      */
 
-    int sum, l, u, d, r;
-
-    sum = (u = *upper ? 1 : 0) + (d = *lower ? 1 : 0) +
-          (l = row[-1] ? 1 : 0) + (r = row[1] ? 1 : 0);
+    int sum = u + d + l +r;
 
     switch(sum)
     {
@@ -103,13 +100,13 @@ static int donut_connectivity_test(byte *upper, byte *row, byte *lower)/*{{{*/
             switch(x)
             {
                 case 0: /* l */
-                    return upper[-1] && lower[-1] ? 0 : 1;
+                    return ul && dl ? 0 : 1;
                 case 1: /* d */
-                    return lower[-1] && lower[1] ? 0 : 1;
+                    return dl && dr ? 0 : 1;
                 case 2: /* r */
-                    return upper[1] && lower[1] ? 0 : 1;
+                    return ur && dr ? 0 : 1;
                 case 3: /* u */
-                    return upper[-1] && upper[1] ? 0 : 1;
+                    return ul && ur ? 0 : 1;
                 default: assert(0); return 0;
             }
         }
@@ -126,16 +123,16 @@ static int donut_connectivity_test(byte *upper, byte *row, byte *lower)/*{{{*/
                 if (l)
                 {
                     if (u)
-                        return upper[-1] ? 0 : 1;
+                        return ul ? 0 : 1;
                     else
-                        return lower[-1] ? 0 : 1;
+                        return dl ? 0 : 1;
                 }
                 else /* r */
                 {
                     if (u)
-                        return upper[1] ? 0 : 1;
+                        return ur ? 0 : 1;
                     else
-                        return lower[1] ? 0 : 1;
+                        return dr ? 0 : 1;
                 }
             }
             else
@@ -155,6 +152,7 @@ static int donut_connectivity_test(byte *upper, byte *row, byte *lower)/*{{{*/
         default: assert(0); return 0;
     }
 }/*}}}*/
+
 static byte donut_transform_pixel(byte *upper, byte *row, byte *lower)/*{{{*/
 {
     /* (center pixel should be gray in order for this to work)
@@ -254,45 +252,45 @@ static byte donut_transform_pixel(byte *upper, byte *row, byte *lower)/*{{{*/
 /* `pixels' should have a margin of 1 pixel at each side
  * returns true if the image was changed
  */
-static int flay(byte **pixels, int w, int h, int rank, int **ranks)
+static int flay(byte **pixels, byte *buf, int w, int h, int rank, int **ranks)
 {
-    int i, j, result = 0;
-
-    byte *buf = MALLOCV(byte, w * h);
-
     assert(pixels);
+    assert(buf);
+    assert(ranks);
     assert(w);
     assert(h);
 
-    for (i = 0; i < h; i++) for (j = 0; j < w; j++)
-    {
-        buf[w * i + j] =
-            donut_transform_pixel(pixels[i-1] + j, pixels[i] + j, pixels[i+1] + j);
-    }
+    int result = 0;
 
-    for (i = 0; i < h; i++)
-    {
+    for (int i = 0; i < h; i++) {
         byte *up = pixels[i-1], *row = pixels[i], *dn = pixels[i+1];
+        byte *buf_up = (i>0)? buf + w * (i-1): NULL;
         byte *buf_row = buf + w * i;
-        int *rank_row = NULL;
-        if (ranks) rank_row = ranks[i];
-        for (j = 0; j < w; j++)
+
+        for (int j = 0; j < w; j++)
         {
+            buf_row[j] = donut_transform_pixel(up + j, row + j, dn + j);
+
             if (row[j] && !buf_row[j])
             {
-                if (!donut_connectivity_test(up + j, row + j, dn + j))
+                if (!donut_connectivity_test( (buf_up && j>0)?(buf_up[j-1]?1:0):0, (buf_up)?(buf_up[j]?1:0):0, (buf_up && j<w-1)?(buf_up[j+1]?1:0):0,
+                                              (j>0)?(buf_row[j-1]?1:0):0, row[j+1]?1:0,
+                                              dn[j-1]?1:0, dn[j]?1:0, dn[j+1]?1:0))
                 {
-                    row[j] = buf_row[j];
-                    if (rank) rank_row[j] = rank;
+                    ranks[i][j] = rank;
                     result = 1;
+                } else {
+                    buf_row[j] = 1;
                 }
             }
-            else
-                row[j] = buf_row[j];
         }
     }
 
-    FREEV(buf);
+    for (int i = 0; i < h; i++)
+    {
+        memcpy(pixels[i], buf+w*i, w);
+    }
+
     return result;
 }
 
@@ -320,7 +318,9 @@ MDJVU_IMPLEMENT void mdjvu_soften_pattern(byte **result, byte **pixels, int32 w,
     for (i = 0; i < h; i++)
         ranks[i] = ranks_buf + w * i;
 
-    while(flay(pointers + 1, w, h, passes, ranks)) passes++;
+    byte *buf = MALLOCV(byte, w * h);
+    while(flay(pointers + 1, buf, w, h, passes, ranks)) passes++;
+    FREEV(buf);
 
     colors = MALLOCV(byte, passes + 1);
 
