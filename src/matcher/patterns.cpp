@@ -1,20 +1,24 @@
 /*
- * patterns.c - pattern matching algorithm
+ * patterns.cpp - pattern matching algorithm
  */
 
-/* This is `patterns.c', the unit that handles pattern matching.
+/* This is `patterns.cpp', the unit that handles pattern matching.
  * Its task is only to compare pairs of images, not to classify a set of them.
  * And this has absolutely nothing to do with choosing a cross-coding prototype.
  */
 
+extern "C" {
 #include "../base/mdjvucfg.h"
 #include <minidjvu/minidjvu.h>
 #include "bitmaps.h"
+}
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <math.h>
+#include <eigen3/Eigen/Dense>
 
 
 #define TIMES_TO_THIN 1
@@ -22,7 +26,6 @@
 
 
 #define SIGNATURE_SIZE 32
-
 
 typedef struct
 {
@@ -72,7 +75,6 @@ MDJVU_IMPLEMENT void mdjvu_set_aggression(mdjvu_matcher_options_t opt, int level
     const double set200[5] = {9, 1.2, 70, 90, 180};
     const double set120[5] = {5,  .2, 50, 70, 150};
     const double   set0[5] = {0,   0,  0,  0,   0};
-
     if (level < 0) level = 0;
 
     ((Options *) opt)->aggression = level;
@@ -168,12 +170,12 @@ static int simple_tests(Image *i1, Image *i2)
  * Now images are aligned by mass centers.
  * Code needs some clarification, yes...
  */
+template <typename compare_row_func2,
+          typename compare_1_with_white_func,
+          typename compare_2_with_white_func>
 static int32 distance_by_pixeldiff_functions_by_shift(Image *i1, Image *i2,
-    int32 (*compare_row)(byte *, byte *, int32),
-    int32 (*compare_1_with_white)(byte *, int32),
-    int32 (*compare_2_with_white)(byte *, int32),
-    int32 ceiling,
-    int32 shift_x, int32 shift_y) /* of i1's coordinate system with respect to i2 */
+                                                      int32 ceiling,
+                                                      int32 shift_x, int32 shift_y) /* of i1's coordinate system with respect to i2 */
 {
     int32 w1 = i1->width, w2 = i2->width, h1 = i1->height, h2 = i2->height;
     int32 min_y = shift_y < 0 ? shift_y : 0;
@@ -187,7 +189,16 @@ static int32 distance_by_pixeldiff_functions_by_shift(Image *i1, Image *i2,
     int32 overlap_length = max_overlap_x_plus_1 - min_overlap_x;
     int32 score = 0;
 
+    compare_row_func2 compare_row;
+    compare_1_with_white_func compare_1_with_white;
+    compare_2_with_white_func compare_2_with_white;
+
     if (overlap_length <= 0) return INT32_MAX;
+
+    Eigen::Map<Eigen::Array<unsigned char,1,Eigen::Dynamic>> r1(NULL, 0);
+    Eigen::Map<Eigen::Array<unsigned char,1,Eigen::Dynamic>> r2(NULL, 0);
+
+    /* calculate difference in a line where the bitmaps overlap */
 
     for (i = min_y; i < max_y_plus_1; i++)
     {
@@ -208,10 +219,9 @@ static int32 distance_by_pixeldiff_functions_by_shift(Image *i1, Image *i2,
         else
         {
             /* calculate difference in a line where the bitmaps overlap */
-            score += compare_row(i1->pixels[y1] + min_overlap_x_for_i1,
-                                 i2->pixels[i] + min_overlap_x,
-                                 overlap_length);
-
+                new (&r1) Eigen::Map<Eigen::Array<unsigned char, 1, Eigen::Dynamic>> (i1->pixels[y1] + min_overlap_x_for_i1, overlap_length);
+                new (&r2) Eigen::Map<Eigen::Array<unsigned char, 1, Eigen::Dynamic>> (i2->pixels[i] + min_overlap_x, overlap_length);
+                score += r1.binaryExpr(r2, compare_row).sum();
 
             /* calculate penalty for the left margin */
             if (min_overlap_x > 0)
@@ -235,16 +245,17 @@ static int32 distance_by_pixeldiff_functions_by_shift(Image *i1, Image *i2,
             }
         }
 
-        if (score >= ceiling) return INT32_MAX;
+        if (score >= ceiling) {
+            return INT32_MAX;
+        }
     }
     return score;
 }
 
-static int32 distance_by_pixeldiff_functions(Image *i1, Image *i2,
-    int32 (*compare_row)(byte *, byte *, int32),
-    int32 (*compare_1_with_white)(byte *, int32),
-    int32 (*compare_2_with_white)(byte *, int32),
-    int32 ceiling)
+template <typename compare_row_func,
+          typename compare_1_with_white_func,
+          typename compare_2_with_white_func>
+static int32 distance_by_pixeldiff_functions(Image *i1, Image *i2, int32 ceiling)
 {
     byte **p1, **p2;
     int32 w1, w2, h1, h2;
@@ -280,9 +291,8 @@ static int32 distance_by_pixeldiff_functions(Image *i1, Image *i2,
     else
         shift_y = (shift_y + MDJVU_CENTER_QUANT / 2) / MDJVU_CENTER_QUANT;
 
-    return distance_by_pixeldiff_functions_by_shift(
-        i1, i2, compare_row, compare_1_with_white, compare_2_with_white,
-        ceiling, shift_x, shift_y);
+    return distance_by_pixeldiff_functions_by_shift<compare_row_func, compare_1_with_white_func, compare_2_with_white_func>(
+        i1, i2, ceiling, shift_x, shift_y);
 }
 
 /* Computing distance by comparing pixels }}} */
@@ -299,30 +309,32 @@ static int32 distance_by_pixeldiff_functions(Image *i1, Image *i2,
  *     that's framework in one image and white in the other.
  */
 
-static int32 pithdiff_compare_row(byte *row1, byte *row2, int32 n)
-{
-    int32 i, s = 0;
-    for (i = 0; i < n; i++) {
-        if (row1[i] == 0xFF || row2[i] == 0xFF)
-            s += fabs(row1[i] - row2[i]);
-    }
-    return s;
-}
+using namespace Eigen;
 
-static int32 pithdiff_compare_with_white(byte *row, int32 n)
+// define a custom template binary functor
+template<typename Scalar> struct pithdiff_compare_row {
+  EIGEN_EMPTY_STRUCT_CTOR(pithdiff_compare_row)
+  typedef Scalar result_type;
+  Scalar operator()(const Scalar& a, const Scalar& b) const {
+      return (a == 0xFF || b == 0xFF) ? fabs(a - b) : 0;
+  }
+};
+
+struct pithdiff_compare_with_white {
+int32 operator()(byte *row, int32 n)
 {
     int32 i, s = 0;
     for (i = 0; i < n; i++) if (row[i] == 255) s += 255;
     return s;
 }
+};
 
 static int32 pithdiff_distance(Image *i1, Image *i2, int32 ceiling)
 {
-    return distance_by_pixeldiff_functions(i1, i2,
-            &pithdiff_compare_row,
-            &pithdiff_compare_with_white,
-            &pithdiff_compare_with_white,
-            ceiling);
+
+    return distance_by_pixeldiff_functions< pithdiff_compare_row<unsigned char>,
+            pithdiff_compare_with_white,
+            pithdiff_compare_with_white>(i1, i2, ceiling);
 }
 
 static int pithdiff_equivalence(Image *i1, Image *i2, double threshold, int32 dpi)
@@ -544,19 +556,17 @@ MDJVU_IMPLEMENT mdjvu_pattern_t mdjvu_pattern_create_from_array(mdjvu_matcher_op
 }/*}}}*/
 
 
+// define a custom template binary functor
+template<typename Scalar> struct pith2_row_subset {
+  EIGEN_EMPTY_STRUCT_CTOR(pith2_row_subset)
+  typedef Scalar result_type;
+  Scalar operator()(const Scalar& a, const Scalar& b) const {
+      return (a & !b) ? 255 : 0;
+  }
+};
 
-static int32 pith2_row_subset(byte *A, byte *B, int32 length)
-{
-    int32 i, s = 0;
-    for (i = 0; i < length; i++)
-    {
-        if (A[i] & !B[i])
-            s += 255;
-    }
-    return s;
-}
-
-static int32 pith2_row_has_black(byte *row, int32 length)
+struct pith2_row_has_black {
+int32 operator()(byte *row, int32 length)
 {
     int32 i, s = 0;
     for (i = 0; i < length; i++)
@@ -566,13 +576,16 @@ static int32 pith2_row_has_black(byte *row, int32 length)
     }
     return s;
 }
+};
 
-static int32 pith2_return_0(byte *A, int32 length)
+struct pith2_return_0 {
+int32 operator()(byte *A, int32 length)
 {
     return 0;
 }
+};
 
-static int pith2_is_subset(mdjvu_pattern_t ptr1, mdjvu_pattern_t ptr2, double threshold, int32 dpi)
+inline static int pith2_is_subset(mdjvu_pattern_t ptr1, mdjvu_pattern_t ptr2, double threshold, int32 dpi)
 {
     Image *i1 = (Image *) ptr1;
     Image *i2 = (Image *) ptr2;
@@ -596,11 +609,9 @@ static int pith2_is_subset(mdjvu_pattern_t ptr1, mdjvu_pattern_t ptr2, double th
     ptr2_outer.mass_center_x = i2->mass_center_x + MDJVU_CENTER_QUANT;
     ptr2_outer.mass_center_y = i2->mass_center_y + MDJVU_CENTER_QUANT;
 
-    d = distance_by_pixeldiff_functions(&ptr1_inner, &ptr2_outer,
-        &pith2_row_subset,
-        &pith2_row_has_black,
-        &pith2_return_0,
-        ceiling);
+    d = distance_by_pixeldiff_functions<pith2_row_subset<unsigned char>,
+            pith2_row_has_black,
+            pith2_return_0>(&ptr1_inner, &ptr2_outer, ceiling);
 
     if (d == INT32_MAX) return -1;
     else if (d < threshold * dpi * perimeter / 100) return 1;
