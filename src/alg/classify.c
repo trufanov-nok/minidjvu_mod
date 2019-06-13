@@ -152,17 +152,41 @@ static void delete_all_classes(Classification *cl)
 
 /* Compares p with nodes from c until a meaningful result. */
 static int compare_to_class(mdjvu_pattern_t p, Class *c, int32 dpi,
-                            mdjvu_matcher_options_t options, int flag)
+                            mdjvu_matcher_options_t options)
 {
     int r = 0;
     ClassNode *n = c->first;
+    ClassNode *prev = c->first;
+    int positive_matches = 0;
+
     while(n)
     {
         r = mdjvu_match_patterns(p, n->ptr, dpi, options);
-        if (r == flag) return 1;
+
+        if (r == -1) { // definetely wrong class
+
+            if (n != c->first) {
+                // pop up the node that definetely doesn't match to the top
+                // of the list in class. That's statistically
+                // speed up matching to this class next time
+                prev->next = n->next;
+                n->next = c->first;
+                c->first = n;
+                if (c->last == n) {
+                    c->last = prev;
+                }
+            }
+
+            return 0;
+        }
+
+        positive_matches += (r==1);
+        prev = n;
         n = n->next;
     }
-    return 0;
+
+    // return 0 if comparision to all examples in class was "0 (unknown, but probably different)"
+    return positive_matches ? 1 : 0;
 }
 
 static void classify(Classification *cl, mdjvu_pattern_t p,
@@ -177,8 +201,7 @@ static void classify(Classification *cl, mdjvu_pattern_t p,
 
         if (class_of_this == c) continue;
 
-        if (compare_to_class(p, c, dpi, options, -1) ||
-            !compare_to_class(p, c, dpi, options, 1)) continue;
+        if (!compare_to_class(p, c, dpi, options)) continue;
 
         if (class_of_this)
             class_of_this = merge(cl, class_of_this, c);
