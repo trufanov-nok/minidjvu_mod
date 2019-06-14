@@ -88,9 +88,10 @@ static ClassNode *new_node(Classification *cl, Class *c, mdjvu_pattern_t ptr)
 {
     ClassNode *n = MALLOC(ClassNode);
     n->ptr = ptr;
-    n->next = c->first;
-    c->first = n;
-    if (!c->last) c->last = n;
+    n->next = NULL;
+    if (c->last) c->last->next = n;
+    c->last = n;
+    if (!c->first) c->first = n;
     n->global_next = NULL;
 
     if (cl->last_node)
