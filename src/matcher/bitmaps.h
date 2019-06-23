@@ -63,7 +63,7 @@ unsigned char **provide_margins(unsigned char **, int w, int h, int make_it_0_or
 void make_bitmap_0_or_1(unsigned char **, int w, int h);
 
 
-void invert_bitmap(unsigned char **, int w, int h, int first_make_it_0_or_1);
+void invert_bitmap_0_or_1(unsigned char **, int w, int h);
 
 void clear_bitmap(unsigned char **pixels, int w, int h);
 

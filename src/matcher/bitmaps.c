@@ -182,26 +182,34 @@ void make_bitmap_0_or_1(unsigned char **pixels, int w, int h)
     }
 }
 
-
-void invert_bitmap(unsigned char **pixels, int w, int h, int first_make_it_0_or_1)
+void invert_bitmap_0_or_1(unsigned char **pixels, int w, int h)
 {
-    int x, y;
+    const int int_len_in_bytes = sizeof (size_t);
+    const int len = w / int_len_in_bytes;
+    const int tail_len = w % int_len_in_bytes;
 
-    for (y = 0; y < h; y++)
-    {
-        unsigned char *row = pixels[y];
-
-        if (first_make_it_0_or_1)
-        {
-            for (x = 0; x < w; x++)
-                row[x] = ( row[x] ? 0 : 1 );
-        }
-        else
-        {
-            for (x = 0; x < w; x++)
-                row[x] = 1 - row[x];
-        }
+    size_t mask = 0x01010101;
+    for (int i = 1; i < int_len_in_bytes/4; i++) {
+       mask |= (mask << 32);
     }
+
+    for (int j = 0; j < h; j++) {
+        size_t * row_i = (size_t *) pixels[j];
+
+        for (int i = 0; i < len; i++) {
+            *row_i++ ^= mask;
+        }
+
+        if (tail_len) {
+            size_t val = 0;
+            memcpy(&val, row_i, tail_len);
+            val ^= mask;
+            memcpy(row_i, &val, tail_len);
+        }
+
+    }
+
+
 }
 
 

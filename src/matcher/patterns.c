@@ -421,22 +421,38 @@ MDJVU_IMPLEMENT void mdjvu_pattern_get_center(mdjvu_pattern_t p, int32 *cx, int3
 
 static void sweep(unsigned char **pixels, unsigned char **source, int w, int h)
 {
-    int x, y;
+    const int int_len_in_bytes = sizeof (size_t);
+    const int len = w / int_len_in_bytes;
+    const int tail_len = w % int_len_in_bytes;
 
-    for (y = 0; y < h; y++)
-    {
-        unsigned char *row    = pixels[y];
-        unsigned char *srow   = source[y];
-        unsigned char *supper = source[y-1];
-        unsigned char *slower = source[y+1];
+    for (int y = 0; y < h; y++) {
+        size_t *row    = (size_t*) pixels[y];
+        size_t *srow   = (size_t*) source[y];
+        size_t *srow_l = (size_t*) (source[y] - 1);
+        size_t *srow_r = (size_t*) (source[y] + 1);
+        size_t *supper = (size_t*) source[y-1];
+        size_t *slower = (size_t*) source[y+1];
 
-        for (x = 0; x < w; x++)
-        {
-            row[x] = (  supper[x] |
-                        srow[x-1] | srow[x] | srow[x+1] |
-                        slower[x] );
+        for (int i = 0; i < len; i++) {
+            *row++ = *supper++ | *srow_l++ | *srow++ | *srow_r++ | *slower++;
+         }
+
+        if (tail_len) {
+            size_t r = 0;
+            memcpy(&r, supper, tail_len);
+            size_t val = r;
+            memcpy(&r, srow_l, tail_len);
+            val |= r;
+            memcpy(&r, srow, tail_len);
+            val |= r;
+            memcpy(&r, srow_r, tail_len);
+            val |= r;
+            memcpy(&r, slower, tail_len);
+            val |= r;
+            memcpy(row, &val, tail_len);
         }
     }
+
 }
 
 static unsigned char **quick_thin(unsigned char **pixels, int w, int h, int N)
@@ -445,15 +461,17 @@ static unsigned char **quick_thin(unsigned char **pixels, int w, int h, int N)
     unsigned char **buf = allocate_bitmap_with_white_margins(w, h);
 
     clear_bitmap(buf, w, h);
-    invert_bitmap(aux, w, h, 0);
+    invert_bitmap_0_or_1(aux, w, h);
 
     while (N--)
     {
         sweep(buf, aux, w, h);
-        assign_bitmap(aux, buf, w, h);
+        if (N) {
+            assign_bitmap(aux, buf, w, h);
+        }
     }
 
-    invert_bitmap(buf, w, h, 0);
+    invert_bitmap_0_or_1(buf, w, h);
 
     free_bitmap_with_margins(aux);
     return buf;
@@ -469,15 +487,17 @@ static unsigned char **quick_thicken(unsigned char **pixels, int w, int h, int N
 
     clear_bitmap(buf, r_w, r_h);
     clear_bitmap(aux, r_w, r_h);
-    for (y = 0; y < h; y++) for (x = 0; x < w; x++)
-    {
-        aux[y + N][x + N] = pixels[y][x];
+
+    for (y = 0; y < h; y++) {
+        memcpy(aux[y + N] + N, pixels[y], w);
     }
 
     while (N--)
     {
         sweep(buf, aux, r_w, r_h);
-        assign_bitmap(aux, buf, r_w, r_h);
+        if (N) {
+            assign_bitmap(aux, buf, r_w, r_h);
+        }
     }
 
     free_bitmap_with_margins(aux);
