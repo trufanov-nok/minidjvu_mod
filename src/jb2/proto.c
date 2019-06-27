@@ -119,8 +119,6 @@ static unsigned int diff_bits_shifted(unsigned char * a, unsigned int a_len, uns
 	const unsigned int b_left = b_len - min_len_size_t*size_of_t_len;
 	const unsigned int a_tail = (a_left + 7) >> 3;
 	const unsigned int b_tail = (b_left + 7) >> 3;
-
-
 	const unsigned int shift_right = size_of_t_len - shift;
 
 	size_t * a_s = (size_t *) a;
