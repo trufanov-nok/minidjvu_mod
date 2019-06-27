@@ -34,6 +34,10 @@ AC_CHECK_LIB(z, inflate)
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress)
 AC_CHECK_LIB(tiff, TIFFOpen)
 
+# Check for OpenMP
+AC_OPENMP
+
+
 # Checks for header files.
 AC_CHECK_HEADERS([libintl.h locale.h stdint.h stdlib.h string.h])
 

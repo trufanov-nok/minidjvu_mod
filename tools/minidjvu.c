@@ -10,7 +10,9 @@
 #include <math.h>
 #include <assert.h>
 #include <locale.h>
-
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 /* TODO: remove duplicated code */
 
 
@@ -31,6 +33,9 @@ int no_prototypes = 0;
 int warnings = 0;
 int indirect = 0;
 const char* dict_suffix = NULL;
+#ifdef _OPENMP
+int max_threads = 0;
+#endif
 
 /* ========================================================================= */
 
@@ -150,6 +155,14 @@ static void show_usage_and_exit(void)           /* {{{ */
     printf(_("    -m, --match:                   match and substitute patterns\n"));
     printf(_("    -n, --no-prototypes:           do not search for prototypes\n"));
     printf(_("    -p <n>, --pages-per-dict <n>:  pages per dictionary (default 10)\n"));
+#ifdef _OPENMP
+    printf(_("    -t <n>, --threads-max <n>:     process pages assigned to a different\n"));
+    printf(_("                                   dictionaries in up to N parallel threads.\n"));
+    printf(_("                                   By default N is equal to the number of \n"));
+    printf(_("                                   CPU cores in case there're 1 or 2 \n"));
+    printf(_("                                   and number of CPU cores minus 1 otherwise\n"));
+    printf(_("                                   Specify -t 1 to disable multithreading\n"));
+#endif
     printf(_("    -r, --report:                  report multipage coding progress\n"));
     printf(_("    -s, --smooth:                  remove some badly looking pixels\n"));
     printf(_("    -v, --verbose:                 print messages about everything\n"));
@@ -425,9 +438,7 @@ static const char *strip_dir(const char *path)
 
 static void multipage_encode(int n, char **pages, char *outname, uint32 multipage_tiff)
 {
-    mdjvu_image_t *images;
-    mdjvu_image_t dict;
-    int i, el = 0;
+    int el = 0;
     int ndicts = (pages_per_dict <= 0)? 1 : 
                                         (n % pages_per_dict > 0) ?  (int) fabs(n/pages_per_dict) + 1:
                                                                     (int) fabs(n/pages_per_dict);
@@ -435,9 +446,8 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     char **elements = MDJVU_MALLOCV(char *, n + ndicts);
     int  *sizes     = MDJVU_MALLOCV(int, n + ndicts);
     mdjvu_compression_options_t options;
-    mdjvu_bitmap_t bitmap;
     mdjvu_error_t error;
-    int32 pages_compressed;
+
     FILE *f, *tf=NULL;
 
     match = 1;
@@ -474,18 +484,30 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     /* compressing */
     if (pages_per_dict <= 0) pages_per_dict = n;
     if (pages_per_dict > n) pages_per_dict = n;
-    images = MDJVU_MALLOCV(mdjvu_image_t, pages_per_dict);
-    pages_compressed = 0;
 
-    while (n - pages_compressed)
-    {
-        int32 pages_to_compress = n - pages_compressed;
-        if (pages_to_compress > pages_per_dict)
-            pages_to_compress = pages_per_dict;
+#ifdef _OPENMP
+    if (!max_threads) {
+        if (omp_get_num_procs() > 2)
+            omp_set_num_threads( omp_get_num_procs() - 1 );
+    } else {
+        omp_set_num_threads( max_threads );
+    }
+#endif
+
+// no need to check _OPENMP as unsupported pragmas are ignored
+#pragma omp parallel for ordered schedule(static, 1) shared(options, elements, sizes, f, tf, error, pages, outname, el)
+    for (int block = 0; block < ndicts; block++) {
+        mdjvu_image_t *images = MDJVU_MALLOCV(mdjvu_image_t, pages_per_dict);
+        int32 pages_compressed = block*pages_per_dict;
+
+
+        int32 pages_to_compress = pages_compressed + pages_per_dict > n ? n - pages_compressed : pages_per_dict;
 
         mdjvu_set_report_start_page(options, pages_compressed + 1);
 
-        for (i = 0; i < pages_to_compress; i++)
+
+        mdjvu_bitmap_t bitmap;
+        for (int i = 0; i < pages_to_compress; i++)
         {
             if (multipage_tiff)
                 bitmap = load_bitmap(pages[0], pages_compressed + i);
@@ -496,50 +518,62 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
                 printf(_("Loading: %d of %d completed\n"), pages_compressed + i + 1, n);
         }
 
-        dict = mdjvu_compress_multipage(pages_to_compress, images, options);
+        mdjvu_image_t dict = mdjvu_compress_multipage(pages_to_compress, images, options);
 
-        path = get_page_or_dict_name(elements, el, strip_dir(pages[multipage_tiff ? 0 : pages_compressed]));
-        dict_name = MDJVU_MALLOCV(char, strlen(path) + strlen(dict_suffix) - 2);
-        strcpy(dict_name, path);
-        replace_suffix(dict_name, dict_suffix);
-        
-        if (!indirect)
-            sizes[el] = mdjvu_file_save_djvu_dictionary(dict, (mdjvu_file_t) tf, 0, &error, erosion);
-        else
-            sizes[el] = mdjvu_save_djvu_dictionary(dict, dict_name, &error, erosion);
-        
-        if (!sizes[el])
+#pragma omp ordered
         {
-            fprintf(stderr, "%s: %s\n", dict_name, mdjvu_get_error_message(error));
-            exit(1);
-        }
-        elements[el++] = dict_name;
 
-        for (i = 0; i < pages_to_compress; i++)
-        {
-            if (i > 0)
-                path = get_page_or_dict_name(elements, el, strip_dir(pages[multipage_tiff ? 0 : pages_compressed + i]));
+            path = get_page_or_dict_name(elements, el, strip_dir(pages[multipage_tiff ? 0 : pages_compressed]));
+            dict_name = MDJVU_MALLOCV(char, strlen(path) + strlen(dict_suffix) - 2);
+            strcpy(dict_name, path);
+            replace_suffix(dict_name, dict_suffix);
 
-            if (verbose)
-                printf(_("saving page #%d into %s using dictionary %s\n"), pages_compressed + i + 1, path, dict_name);
-            
             if (!indirect)
-                sizes[el] = mdjvu_file_save_djvu_page(images[i], (mdjvu_file_t) tf, strip_dir(dict_name), 0, &error, erosion);
+                sizes[el] = mdjvu_file_save_djvu_dictionary(dict, (mdjvu_file_t) tf, 0, &error, erosion);
             else
-                sizes[el] = mdjvu_save_djvu_page(images[i], path, strip_dir(dict_name), &error, erosion);
+                sizes[el] = mdjvu_save_djvu_dictionary(dict, dict_name, &error, erosion);
+
             if (!sizes[el])
             {
-                fprintf(stderr, "%s: %s\n", path, mdjvu_get_error_message(error));
+                fprintf(stderr, "%s: %s\n", dict_name, mdjvu_get_error_message(error));
                 exit(1);
             }
-            elements[el++] = path;
-            mdjvu_image_destroy(images[i]);
-            if (report)
-                printf(_("Saving: %d of %d completed\n"), pages_compressed + i + 1, n);
-        }
-        mdjvu_image_destroy(dict);
-        pages_compressed += pages_to_compress;
+            elements[el] = dict_name;
+#pragma omp atomic
+            el++;
+
+
+            for (int i = 0; i < pages_to_compress; i++)
+            {
+                if (i > 0)
+                    path = get_page_or_dict_name(elements, el, strip_dir(pages[multipage_tiff ? 0 : pages_compressed + i]));
+
+                if (verbose)
+                    printf(_("saving page #%d into %s using dictionary %s\n"), pages_compressed + i + 1, path, dict_name);
+
+                if (!indirect)
+                    sizes[el] = mdjvu_file_save_djvu_page(images[i], (mdjvu_file_t) tf, strip_dir(dict_name), 0, &error, erosion);
+                else
+                    sizes[el] = mdjvu_save_djvu_page(images[i], path, strip_dir(dict_name), &error, erosion);
+                if (!sizes[el])
+                {
+                    fprintf(stderr, "%s: %s\n", path, mdjvu_get_error_message(error));
+                    exit(1);
+                }
+
+                elements[el] = path;
+#pragma omp atomic
+                el++;
+                mdjvu_image_destroy(images[i]);
+                if (report)
+                    printf(_("Saving: %d of %d completed\n"), pages_compressed + i + 1, n);
+            }
+            mdjvu_image_destroy(dict);
+            //        pages_compressed += pages_to_compress;
+            MDJVU_FREEV(images);
+        } // #pragma omp ordered
     }
+
     if (!indirect)
     {
         f = fopen(outname, "wb");
@@ -555,14 +589,12 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     else
         mdjvu_save_djvu_dir(elements,sizes,el,outname,&error);
     
-    for (i=0; i<el; i++) MDJVU_FREEV(elements[i]);
+    for (int i=0; i<el; i++) MDJVU_FREEV(elements[i]);
     MDJVU_FREEV(elements);
     MDJVU_FREEV(sizes);
 
     /* destroying */
     mdjvu_compression_options_destroy(options);
-
-    MDJVU_FREEV(images);
 }
 
 /* same_option(foo, "opt") returns 1 in three cases:
@@ -659,6 +691,14 @@ static int process_options(int argc, char **argv)
         }
         else if (same_option(option, "indirect"))
             indirect = 1;
+#ifdef _OPENMP
+        else if (same_option(option, "threads-max"))
+        {
+            i++;
+            if (i == argc) show_usage_and_exit();
+            max_threads = atoi(argv[i]);
+        }
+#endif
         else
         {
             fprintf(stderr, _("unknown option: %s\n"), argv[i]);

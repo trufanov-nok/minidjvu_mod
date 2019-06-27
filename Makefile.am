@@ -12,7 +12,7 @@ WARNFLAGS += -pedantic-errors -Wpointer-arith -Waggregate-return
 WARNFLAGS += -Wlong-long -Wredundant-decls -Wcast-qual -Wcast-align
 WARNFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 
-AM_CFLAGS = $(WARNFLAGS)
+AM_CFLAGS = $(WARNFLAGS) $(OPENMP_CXXFLAGS)
 AM_CXXFLAGS = $(WARNFLAGS)
 
 localedir = $(datadir)/locale
