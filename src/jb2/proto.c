@@ -6,7 +6,9 @@
 #include <minidjvu/minidjvu.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _MSC_VER
 #include <endian.h> // macros __BYTE_ORDER
+#endif
 
 #define THRESHOLD 21
 
@@ -16,9 +18,10 @@
 #define B6(n) B4(n), B4(n + 1), B4(n + 1), B4(n + 2)
 
 // Lookup table that store the sum of bits for all uchar values
+
 const unsigned char lookuptable[256] = { B6(0), B6(1), B6(1), B6(2) };
 
-inline unsigned char sum_s(size_t val) {
+__inline unsigned char sum_s(size_t val) {
 	unsigned char* c = (unsigned char *) &val;
 	if ( sizeof (size_t) == 8 ) {
 		return lookuptable[c[0]] + lookuptable[c[1]] + lookuptable[c[2]] + lookuptable[c[3]] +
@@ -29,11 +32,11 @@ inline unsigned char sum_s(size_t val) {
 }
 
 #if __BYTE_ORDER == __BIG_ENDIAN
-inline size_t swap_t(size_t* val) {
+__inline size_t swap_t(size_t* val) {
 	return *val;
 }
 #elif __BYTE_ORDER == __LITTLE_ENDIAN
-inline size_t swap_t(size_t val) {
+__inline size_t swap_t(size_t val) {
 	unsigned char * a = (unsigned char *) &val;
 	unsigned char t;
 	for (unsigned int i = 0; i < (sizeof (size_t)/2); i++) {

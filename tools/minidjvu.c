@@ -251,7 +251,7 @@ static void sort_and_save_image(mdjvu_image_t image, const char *path)
 
 static mdjvu_bitmap_t load_bitmap(const char *path, int tiff_idx)
 {
-    mdjvu_error_t error;
+    mdjvu_error_t error = NULL;
     mdjvu_bitmap_t bitmap;
 
     if (decide_if_bmp(path))
@@ -494,9 +494,10 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     }
 #endif
 
+int block;
 // no need to check _OPENMP as unsupported pragmas are ignored
 #pragma omp parallel for ordered schedule(static, 1) shared(options, elements, sizes, f, tf, error, pages, outname, el)
-    for (int block = 0; block < ndicts; block++) {
+    for (block = 0; block < ndicts; block++) {
         mdjvu_image_t *images = MDJVU_MALLOCV(mdjvu_image_t, pages_per_dict);
         int32 pages_compressed = block*pages_per_dict;
 

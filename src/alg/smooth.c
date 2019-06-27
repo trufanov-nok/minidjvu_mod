@@ -6,7 +6,9 @@
 #include <minidjvu/minidjvu.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _MSC_VER
 #include <endian.h>
+#endif
 
 /* all input rows must be 0-or-1 unpacked */
 //static void smooth_row(unsigned char *r, /* result    */
@@ -47,7 +49,7 @@
 //    }
 //}
 
-inline size_t get_smooth(size_t u, size_t t, size_t d)
+__inline size_t get_smooth(size_t u, size_t t, size_t d)
 {
     size_t ul = u >> 1, l = t >> 1, dl = d >> 1;
     size_t ur = u << 1, r = t << 1, dr = d << 1;
@@ -63,7 +65,7 @@ inline size_t get_smooth(size_t u, size_t t, size_t d)
 }
 
 #if __BYTE_ORDER == __BIG_ENDIAN
-inline size_t swap_t(size_t* val, int size) {
+__inline size_t swap_t(size_t* val, unsigned int size) {
     if (size >= sizeof (size_t))
         return *val;
 
@@ -72,7 +74,7 @@ inline size_t swap_t(size_t* val, int size) {
     return res;
 }
 #elif __BYTE_ORDER == __LITTLE_ENDIAN
-inline size_t swap_t(size_t* val, unsigned int size) {
+__inline size_t swap_t(size_t* val, unsigned int size) {
     size_t res = 0;
     unsigned char * a = (unsigned char *) &res;
     memcpy(&res, val, size);

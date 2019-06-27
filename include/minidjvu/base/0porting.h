@@ -69,6 +69,14 @@
  *  }
  */
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+
+#define __LITTLE_ENDIAN  1234
+#define __BIG_ENDIAN  4321
+#define __BYTE_ORDER __LITTLE_ENDIAN
+#endif
+
 #if defined(__cplusplus)
     #define MDJVU_C_EXPORT_PREFIX extern "C"
 #else
@@ -78,7 +86,7 @@
 /* This Microsoft abomination of __declspec does not exist under mingw.
  */
 #define MDJVU_SUPPRESS_DECLSPEC
-#if (defined(windows) || defined(WIN32)) && !defined(MDJVU_SUPPRESS_DECLSPEC)
+#if (defined(windows) || defined(WIN32) || defined(_WIN32)) && !defined(MDJVU_SUPPRESS_DECLSPEC)
     #ifdef MINIDJVU_INCLUDED_FROM_INSIDE
         #define MDJVU_FUNCTION MDJVU_C_EXPORT_PREFIX __declspec(dllexport)
         #define MDJVU_IMPLEMENT __declspec(dllexport)
