@@ -33,7 +33,7 @@ PKG_INSTALLDIR
 AC_CHECK_LIB(z, inflate)
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress)
 AC_CHECK_LIB(tiff, TIFFOpen)
-
+AC_CHECK_LIB(jemalloc,malloc)
 # Check for OpenMP
 AC_OPENMP
 
@@ -53,8 +53,8 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 
 # Checks for library functions.
-AC_FUNC_MALLOC
-AC_FUNC_REALLOC
+#AC_FUNC_MALLOC
+#AC_FUNC_REALLOC
 AC_CHECK_FUNCS([memset pow setlocale strcspn strrchr])
 
 # Trailer
