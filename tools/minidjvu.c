@@ -13,6 +13,9 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+#ifdef _WIN32
+#include <fileapi.h>
+#endif
 /* TODO: remove duplicated code */
 
 
@@ -449,6 +452,9 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     mdjvu_error_t error;
 
     FILE *f, *tf=NULL;
+#ifdef _WIN32
+	char tempfilename[MAX_PATH+1];
+#endif
 
     match = 1;
 
@@ -459,7 +465,22 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     }
     if (!indirect)
     {
+#ifndef _WIN32
         tf = tmpfile();
+#else
+		char pathname[MAX_PATH+1];
+		if (GetTempPathA(MAX_PATH+1, pathname) == 0) {
+			fprintf(stderr, _("Could not create a temporary file. (GetTempPathA)\n"));
+			exit(1);
+		}
+
+		char prefix[4] = {'d', 'j', 'v', 0 };
+		if (GetTempFileNameA(pathname, prefix, 0, tempfilename ) == 0) {
+			fprintf(stderr, _("Could not create a temporary file. (GetTempFileNameA)\n"));
+			exit(1);
+		}
+                tf = fopen(tempfilename, "w+b");
+#endif
         if (!tf)
         {
             fprintf(stderr, _("Could not create a temporary file\n"));
@@ -585,6 +606,9 @@ int block;
         }
         mdjvu_file_save_djvu_dir(elements, sizes, el, (mdjvu_file_t) f, (mdjvu_file_t) tf, &error);
         fclose(tf);
+#ifdef _WIN32
+		remove(tempfilename);
+#endif
         fclose(f);
     }
     else
