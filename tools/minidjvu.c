@@ -29,6 +29,7 @@ int averaging = 0;
 int match = 0;
 int Match = 0;
 int aggression = 100;
+int classifier = 1;
 int erosion = 0;
 int clean = 0;
 int report = 0;
@@ -150,6 +151,22 @@ static void show_usage_and_exit(void)           /* {{{ */
     printf(_("Options:\n"));
     printf(_("    -A, --Averaging:               compute \"average\" representatives\n"));
     printf(_("    -a <n>, --aggression <n>:      set aggression level (default 100)\n"));
+    printf(_("    -C <n>, --Classifier <n>:      set symbols classifier mode (default 1)\n"));
+    printf(_("                                   1 - behave similar to original one.\n"));
+    printf(_("                                   2 - make additional efforts to achieve\n"));
+    printf(_("                                       better compression. This require\n"));
+    printf(_("                                       more CPU time and much more RAM\n"));
+    printf(_("                                       as cache is allocated per thread.\n"));
+    printf(_("                                   3 - similar to 2 but takes even more\n"));
+    printf(_("                                       CPU time to achieve maximum level\n"));
+    printf(_("                                       of document compression (same RAM).\n"));
+    printf(_("                                   BE VERY CAREFUL with modes 2 and 3 as\n"));
+    printf(_("                                       they can slow down your machine or\n"));
+    printf(_("                                       overflow available RAM size. \n"));
+    printf(_("                                       You may decrease number of threads\n"));
+    printf(_("                                       to save some RAM at the cost of time.\n"));
+    printf(_("                                       Or decrease pages per dict at a cost\n"));
+    printf(_("                                       of filesize (not recommended).\n"));
     printf(_("    -c, --clean                    remove small black pieces\n"));
     printf(_("    -d <n> --dpi <n>:              set resolution in dots per inch\n"));
     printf(_("    -e, --erosion                  sacrifice quality to gain in size\n"));
@@ -158,6 +175,8 @@ static void show_usage_and_exit(void)           /* {{{ */
     printf(_("    -m, --match:                   match and substitute patterns\n"));
     printf(_("    -n, --no-prototypes:           do not search for prototypes\n"));
     printf(_("    -p <n>, --pages-per-dict <n>:  pages per dictionary (default 10)\n"));
+    printf(_("    -r, --report:                  report multipage coding progress\n"));
+    printf(_("    -s, --smooth:                  remove some badly looking pixels\n"));
 #ifdef _OPENMP
     printf(_("    -t <n>, --threads-max <n>:     process pages assigned to a different\n"));
     printf(_("                                   dictionaries in up to N parallel threads.\n"));
@@ -166,8 +185,6 @@ static void show_usage_and_exit(void)           /* {{{ */
     printf(_("                                   and number of CPU cores minus 1 otherwise\n"));
     printf(_("                                   Specify -t 1 to disable multithreading\n"));
 #endif
-    printf(_("    -r, --report:                  report multipage coding progress\n"));
-    printf(_("    -s, --smooth:                  remove some badly looking pixels\n"));
     printf(_("    -v, --verbose:                 print messages about everything\n"));
     printf(_("    -X, --Xtension:                file extension for shared dictionary files\n"));
     printf(_("    -w, --warnings:                do not suppress TIFF warnings\n"));
@@ -229,12 +246,22 @@ static mdjvu_matcher_options_t get_matcher_options(void)
     return m_options;
 }
 
+static mdjvu_classify_options_t get_classify_options(void)
+{
+    mdjvu_classify_options_t m_options = NULL;
+	m_options = mdjvu_classify_options_create();
+	mdjvu_set_classifier(m_options, classifier);
+	return m_options;
+}
+
 static void sort_and_save_image(mdjvu_image_t image, const char *path)
 {
     mdjvu_error_t error;
 
     mdjvu_compression_options_t options = mdjvu_compression_options_create();
-    mdjvu_set_matcher_options(options, get_matcher_options());
+    mdjvu_matcher_options_t m_opt = get_matcher_options();
+    mdjvu_set_classify_options(m_opt, get_classify_options());
+    mdjvu_set_matcher_options(options, m_opt);
 
     mdjvu_set_clean(options, clean);
     mdjvu_set_verbose(options, verbose);
@@ -493,7 +520,9 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     if (verbose) printf(_("%d pages total\n"), n);
 
     options = mdjvu_compression_options_create();
-    mdjvu_set_matcher_options(options, get_matcher_options());
+    mdjvu_matcher_options_t m_opt = get_matcher_options();
+    mdjvu_set_classify_options(m_opt, get_classify_options());
+    mdjvu_set_matcher_options(options, m_opt);
 
     mdjvu_set_clean(options, clean);
     mdjvu_set_verbose(options, verbose);
@@ -708,6 +737,12 @@ static int process_options(int argc, char **argv)
             aggression = atoi(argv[i]);
             match = 1;
         }
+        else if (same_option(option, "Classifier"))
+        {
+            i++;
+            if (i == argc) show_usage_and_exit();
+            classifier = atoi(argv[i]);
+        }
         else if (same_option(option, "Xtension"))
         {
             i++;
@@ -779,8 +814,8 @@ int main(int argc, char **argv)
     }
 
     if (verbose) printf("\n");
-    #ifndef NDEBUG 
-        if (alive_bitmap_counter)
+	#ifndef NDEBUG
+		if (alive_bitmap_counter)
            printf(_("alive_bitmap_counter = %d\n"), alive_bitmap_counter);
     #endif
     return 0;

@@ -6,6 +6,13 @@
 #ifndef MDJVU_CLASSIFY_H
 #define MDJVU_CLASSIFY_H
 
+typedef struct MinidjvuClassifyOptions *mdjvu_classify_options_t;
+
+MDJVU_FUNCTION mdjvu_classify_options_t mdjvu_classify_options_create();
+MDJVU_FUNCTION void mdjvu_classify_options_destroy(mdjvu_classify_options_t opt);
+MDJVU_FUNCTION int mdjvu_get_classifier(mdjvu_classify_options_t opt);
+MDJVU_FUNCTION void mdjvu_set_classifier(mdjvu_classify_options_t opt, int v);
+
 /* Classifies a set of patterns.
  * result - array of tags ranging from 1 to return value,
  *    and 0 for those cells which were NULL (yes, NULLs are permitted).
@@ -41,8 +48,8 @@ MDJVU_FUNCTION int32 mdjvu_classify_bitmaps
  */
 
 MDJVU_FUNCTION int32 mdjvu_multipage_classify_patterns
-    (int32 npages, int32 total_npatterns, int32 *npatterns, mdjvu_pattern_t **,
-     int32 *result, int32 *dpi, mdjvu_matcher_options_t,
+	(int32 npages, int32 total_npatterns, const int32 *npatterns, mdjvu_pattern_t **,
+	 int32 *result, const int32 *dpi, mdjvu_matcher_options_t,
      void (*report)(void *, int), void *param);
 
 MDJVU_FUNCTION int32 mdjvu_multipage_classify_bitmaps
@@ -59,8 +66,8 @@ MDJVU_FUNCTION int32 mdjvu_multipage_classify_bitmaps
  */
 
 MDJVU_FUNCTION void mdjvu_multipage_get_dictionary_flags
-    (int32 npages, int32 *npatterns, int32 max_tag,
-     int32 *tags, unsigned char *dictionary_flags);
+	(int32 npages, const int32 *npatterns, int32 max_tag,
+	 const int32 *tags, unsigned char *dictionary_flags);
 
 
 

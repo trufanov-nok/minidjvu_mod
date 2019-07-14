@@ -33,6 +33,7 @@ typedef struct
     double shiftdiff3_threshold;
     int aggression;
     int method;
+    mdjvu_classify_options_t classify_options;
 } Options;
 
 /* These are hand-tweaked parameters of this classifier. */
@@ -88,10 +89,26 @@ MDJVU_IMPLEMENT void mdjvu_set_aggression(mdjvu_matcher_options_t opt, int level
 MDJVU_IMPLEMENT mdjvu_matcher_options_t mdjvu_matcher_options_create(void)
 {
     mdjvu_matcher_options_t options = (mdjvu_matcher_options_t) MALLOC1(Options);
+
     mdjvu_init();
     mdjvu_set_aggression(options, 100);
     ((Options *) options)->method = 0;
+    ((Options *) options)->classify_options = NULL;
     return options;
+}
+
+MDJVU_IMPLEMENT void mdjvu_set_classify_options(mdjvu_matcher_options_t opt, mdjvu_classify_options_t v)
+{
+    Options * options = (Options *) opt;
+    if (options->classify_options)
+        mdjvu_classify_options_destroy(options->classify_options);
+    options->classify_options = v;
+}
+
+MDJVU_IMPLEMENT mdjvu_classify_options_t mdjvu_get_classify_options(mdjvu_matcher_options_t opt)
+{
+    Options * options = (Options *) opt;
+    return options->classify_options;
 }
 
 MDJVU_IMPLEMENT void mdjvu_use_matcher_method(mdjvu_matcher_options_t opt, int method)
@@ -101,7 +118,10 @@ MDJVU_IMPLEMENT void mdjvu_use_matcher_method(mdjvu_matcher_options_t opt, int m
 
 MDJVU_IMPLEMENT void mdjvu_matcher_options_destroy(mdjvu_matcher_options_t opt)
 {
-    FREE((Options *) opt);
+    Options * options = (Options *) opt;
+    if (options->classify_options)
+        mdjvu_classify_options_destroy(options->classify_options);
+    FREE(options);
 }
 
 /* ========================================================================== */

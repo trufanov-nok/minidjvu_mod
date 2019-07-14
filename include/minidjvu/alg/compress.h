@@ -18,7 +18,6 @@ MDJVU_FUNCTION void mdjvu_compression_options_destroy(mdjvu_compression_options_
  * That is, DON'T destroy matcher options afterwards.
  */
 MDJVU_FUNCTION void mdjvu_set_matcher_options(mdjvu_compression_options_t, mdjvu_matcher_options_t);
-
 MDJVU_FUNCTION void mdjvu_set_clean(mdjvu_compression_options_t, int);
 MDJVU_FUNCTION void mdjvu_set_verbose(mdjvu_compression_options_t, int);
 MDJVU_FUNCTION void mdjvu_set_no_prototypes(mdjvu_compression_options_t, int);

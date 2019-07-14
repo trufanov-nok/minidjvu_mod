@@ -27,12 +27,39 @@
 #endif
 
 
+typedef struct MinidjvuClassifyOptions
+{
+    int classifier;
+} MinidjvuClassifyOptions;
+
+MDJVU_IMPLEMENT mdjvu_classify_options_t mdjvu_classify_options_create()
+{
+    mdjvu_classify_options_t opt = (mdjvu_classify_options_t)
+        malloc(sizeof(struct MinidjvuClassifyOptions));
+    mdjvu_init();
+    opt->classifier = 1;
+    return opt;
+}
+
+MDJVU_IMPLEMENT void mdjvu_classify_options_destroy(mdjvu_classify_options_t opt)
+{
+    free(opt);
+}
+
+MDJVU_IMPLEMENT int mdjvu_get_classifier(mdjvu_classify_options_t opt)
+    {return opt->classifier;}
+MDJVU_IMPLEMENT void mdjvu_set_classifier(mdjvu_classify_options_t opt, int v)
+    {opt->classifier = v;}
+
 /* Classes are single-linked lists with an additional pointer to the last node.
  * This is an class item.
  */
 typedef struct ClassNode
 {
     mdjvu_pattern_t ptr;
+    int32 id;
+    int32 pos;
+    int32 dpi;
     struct ClassNode *next;        /* NULL if this node is the last one */
     struct ClassNode *global_next; /* next among all nodes to classify  */
     int32 tag;                     /* filled before the final dumping   */
@@ -44,7 +71,7 @@ typedef struct Class
     ClassNode *first, *last;
     struct Class *prev_class;
     struct Class *next_class;
-    int32 last_page; /* last page on which this class was met */
+    int32 count;
 } Class;
 
 
@@ -54,14 +81,24 @@ typedef struct Classification
     ClassNode *first_node, *last_node;
 } Classification;
 
+typedef struct PatternList
+{
+    mdjvu_pattern_t p;
+    int32 id;
+    int32 pos;
+    int32 dpi;
+    struct PatternList *prev;
+    struct PatternList *next;
+} PatternList;
+
 /* Creates an empty class and links it to the list of classes. */
 static Class *new_class(Classification *cl)
 {
     Class *c = MALLOC(Class);
     c->first = c->last = NULL;
     c->prev_class = NULL;
+    c->count = 0;
     c->next_class = cl->first_class;
-    c->last_page = 0;
     if (cl->first_class) cl->first_class->prev_class = c;
     cl->first_class = c;
     return c;
@@ -84,15 +121,19 @@ static void delete_class(Classification *cl, Class *c)
 }
 
 /* Creates a new node and adds it to the given class. */
-static ClassNode *new_node(Classification *cl, Class *c, mdjvu_pattern_t ptr)
+static ClassNode *new_node(Classification *cl, Class *c, PatternList * pl)
 {
     ClassNode *n = MALLOC(ClassNode);
-    n->ptr = ptr;
+    n->ptr = pl->p;
+    n->id  = pl->id;
+    n->pos = pl->pos;
+    n->dpi = pl->dpi;
     n->next = NULL;
     if (c->last) c->last->next = n;
     c->last = n;
     if (!c->first) c->first = n;
     n->global_next = NULL;
+    c->count++;
 
     if (cl->last_node)
         cl->last_node->global_next = n;
@@ -115,6 +156,7 @@ static Class *merge(Classification *cl, Class *c1, Class *c2)
     {
         c1->last->next = c2->first;
         c1->last = c2->last;
+        c1->count += c2->count;
     }
     delete_class(cl, c2);
     return c1;
@@ -151,9 +193,64 @@ static void delete_all_classes(Classification *cl)
     }
 }
 
+
+typedef struct CachedResults
+{
+    unsigned char** cache;
+    size_t size;
+} CachedResults;
+
+CachedResults new_cache(size_t size) {
+	CachedResults c;
+	c.size = size;
+	c.cache = MALLOCV(unsigned char*, size);
+	for (int i = 0; i < size; i++) {
+		const int alloc = (size - i + 3) >> 2;
+		c.cache[i] = MALLOCV(unsigned char, alloc);
+		memset(c.cache[i], 0xFF, alloc);
+	}
+	return c;
+}
+
+unsigned char masks[4] = {0xFC, 0xF3, 0xCF, 0x3F};
+
+static void set_cache(CachedResults* c, int a, int b, int val) {
+    val++;
+    if (a > b) { int t = a; a = b; b = t; }
+    unsigned char* v = c->cache[a] + ((c->size - b - 1) >> 2);
+    const int shift = b & 0x3;
+    *v = (*v & masks[shift]) | ( val << (shift*2) );
+}
+
+static void set_cache_by_line(CachedResults* c, unsigned char* line, int a, int b, int val) {
+    val++;
+    if (a > b) {int t = a; a = b; b = t;}
+    unsigned char* v = line + ((c->size - b - 1) >> 2);
+    const int shift = b & 0x3;
+    *v = (*v & masks[shift]) | ( val << (shift*2) );
+}
+
+static char get_cache_and_line(const CachedResults* c, int a, int b, unsigned char** line) {
+    if (a > b) {int t = a; a = b; b = t;}
+    *line = c->cache[a];
+    char val = (*line)[(c->size - b - 1) >> 2];
+    val >>= (b & 0x3)*2;
+    return (val & 0x3) - 1;
+}
+
+
+static void delete_cache(CachedResults* c) {
+	for (int i = 0; i < c->size; i++) {
+		FREEV(c->cache[i]);
+	}
+	FREEV(c->cache);
+	c->cache = NULL;
+	c->size = 0;
+}
+
+
 /* Compares p with nodes from c until a meaningful result. */
-static int compare_to_class(mdjvu_pattern_t p, Class *c, int32 dpi,
-                            mdjvu_matcher_options_t options)
+static int compare_to_class(ClassNode* o, Class *c, mdjvu_matcher_options_t options, CachedResults* cache)
 {
     int r = 0;
     ClassNode *n = c->first;
@@ -162,21 +259,30 @@ static int compare_to_class(mdjvu_pattern_t p, Class *c, int32 dpi,
 
     while(n)
     {
-        r = mdjvu_match_patterns(p, n->ptr, dpi, options);
+        if (cache) {
+            unsigned char* line;
+            r = get_cache_and_line(cache, o->id, n->id, &line);
+            if (r == 2) {
+				r = mdjvu_match_patterns(o->ptr, n->ptr, n->dpi, options);
+                set_cache_by_line(cache, line, o->id, n->id, r);
+            }
+        } else {
+			r = mdjvu_match_patterns(o->ptr, n->ptr, n->dpi, options);
+        }
 
         if (r == -1) { // definetely wrong class
 
-            if (n != c->first) {
-                // pop up the node that definetely doesn't match to the top
-                // of the list in class. That's statistically
-                // speed up matching to this class next time
-                prev->next = n->next;
-                n->next = c->first;
-                c->first = n;
-                if (c->last == n) {
-                    c->last = prev;
-                }
-            }
+			if (n != c->first) {
+				// pop up the node that definetely doesn't match to the top
+				// of the list in class. That's statistically
+				// speed up matching to this class next time
+				prev->next = n->next;
+				n->next = c->first;
+				c->first = n;
+				if (c->last == n) {
+					c->last = prev;
+				}
+			}
 
             return 0;
         }
@@ -190,55 +296,104 @@ static int compare_to_class(mdjvu_pattern_t p, Class *c, int32 dpi,
     return positive_matches ? 1 : 0;
 }
 
-static void classify(Classification *cl, mdjvu_pattern_t p,
-                     int32 dpi, mdjvu_matcher_options_t options,
-                     int32 page /* of current pattern */)
+static void classify(Classification *cl, PatternList * all_patterns, mdjvu_matcher_options_t options, CachedResults* cache)
 {
-    Class *class_of_this = NULL;
-    Class *c, *next_c = NULL;
-    for (c = cl->first_class; c; c = next_c)
-    {
-        next_c = c->next_class; /* That's because c may be deleted in merging */
+    if (!all_patterns->p) return;
 
-        if (class_of_this == c) continue;
+    while (all_patterns) {
+        mdjvu_pattern_t cur = all_patterns->p;
+        Class * c = new_class(cl);
+        new_node(cl, c, all_patterns);
 
-        if (!compare_to_class(p, c, dpi, options)) continue;
+        PatternList * maybe_seed = all_patterns->next;
+        while (maybe_seed) {
+            int res = mdjvu_match_patterns(cur, maybe_seed->p, all_patterns->dpi, options);
+            if (cache) {
+                set_cache(cache, all_patterns->id, maybe_seed->id, res);
+            }
 
-        if (class_of_this)
-            class_of_this = merge(cl, class_of_this, c);
-        else
-            class_of_this = c;
+            if (res == 1) {
+                if (maybe_seed->prev) {
+                    maybe_seed->prev->next = maybe_seed->next;
+                }
+                if (maybe_seed->next) {
+                    maybe_seed->next->prev = maybe_seed->prev;
+                }
+
+                new_node(cl, c, maybe_seed);
+            }
+            maybe_seed = maybe_seed->next;
+        }
+
+        all_patterns = all_patterns->next;
     }
-    if (!class_of_this) class_of_this = new_class(cl);
-    if (page > class_of_this->last_page)
-        class_of_this->last_page = page;
-    new_node(cl, class_of_this, p);
+
+    Class * c = cl->first_class;
+    int classifier_level = mdjvu_get_classifier(mdjvu_get_classify_options(options));
+    while (c->next_class != NULL) {
+        int merged;
+        do {
+            merged = 0;
+            Class * next_c = c->next_class;
+            Class * recheck_to_last_merged = NULL;
+            while (next_c != recheck_to_last_merged) {
+                Class * next_to_next_c = next_c->next_class; /* That's because c may be deleted in merging */
+                Class* comp1 = c->count >= next_c->count ? c : next_c;
+                Class* comp2 = c->count >= next_c->count ? next_c : c;
+                ClassNode * n = comp1->first;
+                char m = 0;
+                while (n) {
+					if (compare_to_class(n, comp2, options, cache)) {
+						recheck_to_last_merged = next_to_next_c;
+                        merge(cl, c, next_c);
+                        m = merged = 1;
+                        break;
+                    }
+					n = n->next;
+                }
+                if (classifier_level > 2 && !m) {
+                    comp1 = c->count < next_c->count ? c : next_c;
+                    comp2 = c->count < next_c->count ? next_c : c;
+                    n = comp1->first;
+                    while (n) {
+						if (compare_to_class(n, comp2, options, cache)) {
+							recheck_to_last_merged = next_to_next_c;
+                            merge(cl, c, next_c);
+                            merged = 1;
+                            break;
+                        }
+                        n = n->next;
+                    }
+                }
+                next_c = next_to_next_c;
+            }
+
+
+        } while (classifier_level > 1 && merged);
+
+        c = c->next_class;
+    }
+
 }
 
-static int32 get_tags_from_classification(mdjvu_pattern_t *b, int32 *r, int32 n, Classification *cl)
+static int32 get_tags_from_classification(int32 *r, int32 n, Classification *cl)
 {
-    int32 i;
     int32 max_tag = put_tags(cl);
     ClassNode *node;
 
     delete_all_classes(cl);
 
-    i = 0;
+    memset(r, 0, sizeof(int32) * n);
     node = cl->first_node;
     while (node)
     {
         ClassNode *t;
-        while (!b[i])
-        {
-            r[i++] = 0;
-            assert(i < n); /* because we have a node */
-        }
-        r[i++] = node->tag;
+        r[node->pos] = node->tag;
         t = node;
         node = node->global_next;
         FREE(t);
     }
-    if (i < n) while (i < n) r[i++] = 0;
+
     return max_tag;
 }
 
@@ -252,13 +407,44 @@ MDJVU_IMPLEMENT int32 mdjvu_classify_patterns
     (mdjvu_pattern_t *b, int32 *r, int32 n, int32 dpi,
      mdjvu_matcher_options_t options)
 {
+    if (!n) return 0;
+
     int32 i;
     Classification cl;
     init_classification(&cl);
 
-    for (i = 0; i < n; i++) if (b[i]) classify(&cl, b[i], dpi, options, 1);
+    PatternList* pl = MALLOCV(PatternList, n);
+    memset(pl, 0, sizeof(PatternList)*n);
+    PatternList* head = pl;
+    head->p = NULL;
+    PatternList* tail = NULL;
 
-    return get_tags_from_classification(b, r, n, &cl);
+    for (i = 0; i < n; i++) {
+        if (b[i]) {
+            head->p = b[i];
+            head->pos = i;
+            head->dpi = dpi;
+            head->next = head+1;
+            head->prev = tail;
+            tail = head++;
+        }
+    }
+
+    if (tail) {
+        tail->next = NULL;
+    }
+
+    int classifier_level = mdjvu_get_classifier(mdjvu_get_classify_options(options));
+    if (classifier_level == 1) {
+        classify(&cl, pl, options, NULL);
+    } else {
+        CachedResults cache = new_cache(n);
+        classify(&cl, pl, options, &cache);
+        delete_cache(&cache);
+    }
+    MDJVU_FREEV(pl);
+
+    return get_tags_from_classification(r, n, &cl);
 }
 
 
@@ -318,22 +504,28 @@ MDJVU_IMPLEMENT int32 mdjvu_classify_bitmaps
 
 /* FIXME: wrong dpi handling */
 MDJVU_IMPLEMENT int32 mdjvu_multipage_classify_patterns
-    (int32 npages, int32 total_patterns_count, int32 *npatterns,
+	(int32 npages, int32 total_patterns_count, const int32 *npatterns,
      mdjvu_pattern_t **patterns, int32 *result,
-     int32 *dpi, mdjvu_matcher_options_t options,
+	 const int32 *dpi, mdjvu_matcher_options_t options,
      void (*report)(void *, int), void *param)
 {
     /* a kluge for NULL patterns */
     /* FIXME: do it decently */
-    mdjvu_pattern_t *all_patterns = MDJVU_MALLOCV(mdjvu_pattern_t, total_patterns_count);
-    int32 patterns_gathered;
+    if (!total_patterns_count) return 0;
     int32 page;
     int32 max_tag;
 
     Classification cl;
     init_classification(&cl);
 
-    patterns_gathered = 0;
+    mdjvu_pattern_t* all_patterns = MALLOCV(mdjvu_pattern_t, total_patterns_count);
+    PatternList* pl = MALLOCV(PatternList, total_patterns_count);
+    PatternList* head = pl;
+    head->p = NULL;
+    PatternList* tail = NULL;
+
+    int32 patterns_gathered = 0;
+    int32 pl_num = 0;
     for (page = 0; page < npages; page++)
     {
         int32 n = npatterns[page];
@@ -341,16 +533,45 @@ MDJVU_IMPLEMENT int32 mdjvu_multipage_classify_patterns
         mdjvu_pattern_t *p = patterns[page];
 
         int32 i;
-        for (i = 0; i < n; i++)
-        {
-            all_patterns[patterns_gathered++] = p[i];
-            if (p[i]) classify(&cl, p[i], d, options, page);
+        for (i = 0; i < n; i++) {
+            if (*p) {
+                head->p = *p;
+                head->id = pl_num++;
+                head->pos = patterns_gathered;
+                head->dpi = d;
+                head->next = head+1;
+                head->prev = tail;
+                tail = head++;
+            }
+            all_patterns[patterns_gathered++] = *p;
+            p++;
         }
-        report(param, page);
+        //        report(param, page);
     }
 
+    if (tail) {
+        tail->next = NULL;
+    } else {
+        MDJVU_FREEV(pl);
+        MDJVU_FREEV(all_patterns);
+        memset(result, 0, sizeof(int32) * total_patterns_count);
+        return 0;
+    }
+
+    int classifier_level = mdjvu_get_classifier(mdjvu_get_classify_options(options));
+    if (classifier_level == 1) {
+        classify(&cl, pl, options, NULL);
+    } else {
+        CachedResults cache = new_cache(pl_num);
+        classify(&cl, pl, options, &cache);
+        delete_cache(&cache);
+    }
+
+    MDJVU_FREEV(pl);
+
+
     max_tag = get_tags_from_classification
-        (all_patterns, result, total_patterns_count, &cl);
+            (result, total_patterns_count, &cl);
 
     MDJVU_FREEV(all_patterns);
     return max_tag;
@@ -437,9 +658,9 @@ MDJVU_IMPLEMENT int32 mdjvu_multipage_classify_bitmaps
 
 MDJVU_IMPLEMENT void mdjvu_multipage_get_dictionary_flags
    (int32 n,
-    int32 *npatterns,
+	const int32 *npatterns,
     int32 max_tag,
-    int32 *tags,
+	const int32 *tags,
     unsigned char *dictionary_flags)
 {
     int32 page_number;

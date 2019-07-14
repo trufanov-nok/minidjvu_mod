@@ -48,6 +48,7 @@ MDJVU_IMPLEMENT void mdjvu_set_matcher_options(mdjvu_compression_options_t opt, 
         mdjvu_matcher_options_destroy(opt->matcher_options);
     opt->matcher_options = v;
 }
+
 MDJVU_IMPLEMENT void mdjvu_set_clean(mdjvu_compression_options_t opt, int v)
     {opt->clean = v;}
 MDJVU_IMPLEMENT void mdjvu_set_verbose(mdjvu_compression_options_t opt, int v)
