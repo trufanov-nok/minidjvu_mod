@@ -121,7 +121,7 @@ MDJVU_IMPLEMENT void mdjvu_matcher_options_destroy(mdjvu_matcher_options_t opt)
     Options * options = (Options *) opt;
     if (options->classify_options)
         mdjvu_classify_options_destroy(options->classify_options);
-    FREE(options);
+    FREE1(options);
 }
 
 /* ========================================================================== */
@@ -738,5 +738,5 @@ MDJVU_IMPLEMENT void mdjvu_pattern_destroy(mdjvu_pattern_t p)/*{{{*/
     if (img->pith2_outer)
         free_bitmap_with_margins(img->pith2_outer);
 
-    FREE(img);
+    FREE1(img);
 }/*}}}*/
