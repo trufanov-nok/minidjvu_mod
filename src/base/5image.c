@@ -178,6 +178,29 @@ MDJVU_IMPLEMENT mdjvu_image_t mdjvu_image_create(int32 width, int32 height)
     return (mdjvu_image_t) image;
 }
 
+/* ______________________________   size of image in memory  __________________________ */
+
+MDJVU_IMPLEMENT int mdjvu_image_mem_size(mdjvu_image_t img)
+{
+    int res = sizeof(Image);
+    Image *image = (Image *) img;
+    res += image->blits_allocated * sizeof(int32) * 2 +
+            image->blits_allocated * sizeof(mdjvu_bitmap_t);
+
+    for (int i = 0; i < mdjvu_artifacts_count; i++)
+        res += artifact_sizes[i]*image->bitmaps_allocated;
+
+    for (int i = 0; i < image->bitmaps_count; i++)
+        res += mdjvu_bitmap_mem_size(image->bitmaps[i]);
+
+    if (image->dictionary) {
+        res += mdjvu_image_mem_size(image->dictionary);
+    }
+
+    return res;
+}
+
+
 /* ______________________________   destroy   _______________________________ */
 
 MDJVU_IMPLEMENT void mdjvu_image_destroy(mdjvu_image_t image)

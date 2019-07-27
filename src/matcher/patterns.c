@@ -725,6 +725,16 @@ MDJVU_IMPLEMENT int mdjvu_match_patterns(mdjvu_pattern_t ptr1, mdjvu_pattern_t p
     return result;
 }
 
+MDJVU_IMPLEMENT int mdjvu_pattern_mem_size(mdjvu_pattern_t p)
+{
+   Image *img = (Image *) p;
+   int sq = img->width * img->height;
+   int res = sizeof(Image);
+   if (img->pixels) res += sq;
+   if (img->pith2_inner) res += sq;
+   if (img->pith2_outer) res += sq;
+   return res;
+}
 
 MDJVU_IMPLEMENT void mdjvu_pattern_destroy(mdjvu_pattern_t p)/*{{{*/
 {

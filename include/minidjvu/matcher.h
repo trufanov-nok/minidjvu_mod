@@ -50,6 +50,9 @@ MDJVU_FUNCTION mdjvu_pattern_t mdjvu_pattern_create(mdjvu_matcher_options_t, mdj
 MDJVU_FUNCTION mdjvu_pattern_t mdjvu_pattern_create_from_array
     (mdjvu_matcher_options_t, unsigned char **, int32 w, int32 h);
 
+/* Return size of a pattern in memory in bytes */
+
+MDJVU_FUNCTION int mdjvu_pattern_mem_size(mdjvu_pattern_t p);
 
 /* Destroy the pattern. */
 

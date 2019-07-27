@@ -39,6 +39,12 @@ MDJVU_IMPLEMENT mdjvu_bitmap_t mdjvu_bitmap_create(int32 width, int32 height)
     return (mdjvu_bitmap_t) b;
 }
 
+MDJVU_IMPLEMENT int mdjvu_bitmap_mem_size(mdjvu_bitmap_t bmp)
+{
+    Bitmap *b = (Bitmap *) bmp;
+    return BYTES_PER_ROW(b->width)*b->height  + sizeof(Bitmap);
+}
+
 MDJVU_IMPLEMENT void mdjvu_bitmap_destroy(mdjvu_bitmap_t bmp)
 {
     Bitmap *b = (Bitmap *) bmp;

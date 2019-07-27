@@ -202,13 +202,30 @@ typedef struct CachedResults
 
 CachedResults new_cache(size_t size) {
 	CachedResults c;
-	c.size = size;
-	c.cache = MALLOCV(unsigned char*, size);
-	for (int i = 0; i < size; i++) {
-		const int alloc = (size - i + 3) >> 2;
-		c.cache[i] = MALLOCV(unsigned char, alloc);
-		memset(c.cache[i], 0xFF, alloc);
-	}
+        c.size = size;
+        c.cache = MALLOCV(unsigned char*, size);
+        double mem_req = 0;
+        for (int i = 0; i < size; i++) {
+                mem_req += (size - i + 3) >> 2;
+        }
+
+        fprintf(stdout, "Allocating cache for %lu elements: %0.2f MiB .... ", size, mem_req / 1024 / 1024);
+
+        unsigned char* buf = MALLOCV(unsigned char, mem_req);
+        if (buf) {
+            fprintf(stdout, "done\n", size, mem_req);
+        } else {
+            fprintf(stdout, "ERROR!\n");
+            exit(-1);
+        }
+
+        memset(buf, 0xFF, mem_req);
+
+        for (int i = 0; i < size; i++) {
+                c.cache[i] = buf;
+                buf += (size - i + 3) >> 2;
+        }
+
 	return c;
 }
 
@@ -240,9 +257,7 @@ static char get_cache_and_line(const CachedResults* c, int a, int b, unsigned ch
 
 
 static void delete_cache(CachedResults* c) {
-	for (int i = 0; i < c->size; i++) {
-		FREEV(c->cache[i]);
-	}
+        FREEV(c->cache[0]);
 	FREEV(c->cache);
 	c->cache = NULL;
 	c->size = 0;
@@ -419,6 +434,8 @@ MDJVU_IMPLEMENT int32 mdjvu_classify_patterns
     head->p = NULL;
     PatternList* tail = NULL;
 
+    double allocated_mem_stat = 0;
+
     for (i = 0; i < n; i++) {
         if (b[i]) {
             head->p = b[i];
@@ -426,9 +443,12 @@ MDJVU_IMPLEMENT int32 mdjvu_classify_patterns
             head->dpi = dpi;
             head->next = head+1;
             head->prev = tail;
+            allocated_mem_stat += mdjvu_pattern_mem_size(head->p);
             tail = head++;
         }
     }
+
+    fprintf(stdout, "Classifier allocated memory: %0.2f MiB\n", allocated_mem_stat / 1024 / 1024);
 
     if (tail) {
         tail->next = NULL;
@@ -465,6 +485,8 @@ MDJVU_IMPLEMENT int32 mdjvu_classify_bitmaps
     int32 dpi = mdjvu_image_get_resolution(image);
     mdjvu_pattern_t *patterns = MALLOCV(mdjvu_pattern_t, n);
     int32 max_tag;
+
+    fprintf(stdout,"Size of JB2 image in memory: %0.2f MiB\n", (double) mdjvu_image_get_bitmap_count(image) / 1024 / 1024);
 
     for (i = 0; i < n; i++)
     {
@@ -526,6 +548,8 @@ MDJVU_IMPLEMENT int32 mdjvu_multipage_classify_patterns
 
     int32 patterns_gathered = 0;
     int32 pl_num = 0;
+    double allocated_mem_stat = 0;
+
     for (page = 0; page < npages; page++)
     {
         int32 n = npatterns[page];
@@ -541,13 +565,17 @@ MDJVU_IMPLEMENT int32 mdjvu_multipage_classify_patterns
                 head->dpi = d;
                 head->next = head+1;
                 head->prev = tail;
+                allocated_mem_stat += mdjvu_pattern_mem_size(head->p);
                 tail = head++;
+
             }
             all_patterns[patterns_gathered++] = *p;
             p++;
         }
         //        report(param, page);
     }
+
+    fprintf(stdout, "Classifier allocated memory: %0.2f MiB\n", allocated_mem_stat / 1024 / 1024);
 
     if (tail) {
         tail->next = NULL;
@@ -591,10 +619,12 @@ MDJVU_IMPLEMENT int32 mdjvu_multipage_classify_bitmaps
     mdjvu_pattern_t **pointers = (mdjvu_pattern_t **)
         malloc(npages * sizeof(mdjvu_pattern_t *));
 
+    double images_size_in_mem = 0;
     int32 patterns_created = 0;
     for (page = 0; page < npages; page++)
     {
         mdjvu_image_t current_image = pages[page];
+        images_size_in_mem += mdjvu_image_mem_size(current_image);
         int32 c = npatterns[page] = mdjvu_image_get_bitmap_count(current_image);
         int32 i;
         dpi[page] = mdjvu_image_get_resolution(current_image);
@@ -613,6 +643,8 @@ MDJVU_IMPLEMENT int32 mdjvu_multipage_classify_bitmaps
             }
         }
     }
+
+    fprintf(stdout,"Size of %u JB2 images in memory: %0.2f MiB\n", npages, images_size_in_mem / 1024 / 1024);
 
     max_tag = mdjvu_multipage_classify_patterns
         (npages, total_patterns_count, npatterns,

@@ -18,6 +18,9 @@ MDJVU_FUNCTION mdjvu_bitmap_t mdjvu_bitmap_create(int32 width, int32 height);
 /* Destroy a bitmap. Each created bitmap must be destroyed sometime. */
 MDJVU_FUNCTION void mdjvu_bitmap_destroy(mdjvu_bitmap_t);
 
+/* Return size of a bitmap in memory in bytes. */
+MDJVU_FUNCTION int mdjvu_bitmap_mem_size(mdjvu_bitmap_t bmp);
+
 /* Get the width and height of a bitmap. */
 MDJVU_FUNCTION int32 mdjvu_bitmap_get_width(mdjvu_bitmap_t);
 MDJVU_FUNCTION int32 mdjvu_bitmap_get_height(mdjvu_bitmap_t);

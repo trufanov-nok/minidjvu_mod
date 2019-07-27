@@ -10,6 +10,9 @@ typedef struct MinidjvuImage *mdjvu_image_t;
  */
 MDJVU_FUNCTION mdjvu_image_t mdjvu_image_create(int32 width, int32 height);
 
+/* Returns size of an image in memory in bytes. */
+MDJVU_FUNCTION int mdjvu_image_mem_size(mdjvu_image_t img);
+
 /* Destroy a split image, freeing all its bitmaps and blits. */
 MDJVU_FUNCTION void mdjvu_image_destroy(mdjvu_image_t);
 
