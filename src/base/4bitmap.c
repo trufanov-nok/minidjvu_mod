@@ -424,24 +424,24 @@ MDJVU_IMPLEMENT void mdjvu_bitmap_remove_margins
 
 /* _______________________________   misc   ________________________________ */
 
-/* This is a sub-optimal way to count mass.
- * Run "fortune -m BITCOUNT" to see a better way...
- */
+// Generate a lookup table for 8 bit integers
+#define B2(n) n, n + 1, n + 1, n + 2
+#define B4(n) B2(n), B2(n + 1), B2(n + 1), B2(n + 2)
+#define B6(n) B4(n), B4(n + 1), B4(n + 1), B4(n + 2)
+
+// Lookup table that store the sum of bits for all uchar values
+
+const unsigned char lookup_mass[256] = { B6(0), B6(1), B6(1), B6(2) };
+
 MDJVU_IMPLEMENT int32 mdjvu_bitmap_get_mass(mdjvu_bitmap_t b)
 {
     int32 m = 0;
-    int32 w = BMP->width;
-    int32 h = BMP->height;
-    unsigned char *buf = (unsigned char *) malloc(w);
     int32 y;
-    for (y = 0; y < h; y++)
-    {
+    for (y = 0; y < BMP->height; y++) {
+        unsigned char *data = BMP->data[y];
         int x;
-        mdjvu_bitmap_unpack_row_0_or_1(b, buf, y);
-        for (x = 0; x < w; x++)
-            m += buf[x];
+        for (x = 0; x < BYTES_PER_ROW(BMP->width); x++)
+            m += lookup_mass[data[x]];
     }
-    free(buf);
     return m;
 }
-
