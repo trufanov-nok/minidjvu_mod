@@ -37,7 +37,10 @@ FUNCTIONS_BEGIN
 unsigned char **allocate_bitmap(int w, int h);
 void free_bitmap(unsigned char **);
 void assign_bitmap(unsigned char **dst, unsigned char **src, int w, int h);
+void assign_unpacked_bitmap(unsigned char **dst, unsigned char **src, int w, int h);
+void assign_unpacked_bitmap_with_shift(unsigned char **dst, unsigned char **src, int w, int h, int N);
 unsigned char **copy_bitmap(unsigned char **, int w, int h);
+
 
 
 /* Allocate a w * h bitmap with margins of 1 pixels at each side.
@@ -64,6 +67,10 @@ void make_bitmap_0_or_1(unsigned char **, int w, int h);
 
 
 void invert_bitmap_0_or_1(unsigned char **, int w, int h);
+
+// same as invert_bitmap_0_or_1 but for unpacked bitmaps
+void invert_bitmap(unsigned char **, int w, int h);
+void invert_bitmap_old(unsigned char **pixels, int w, int h, int first_make_it_0_or_1);
 
 void clear_bitmap(unsigned char **pixels, int w, int h);
 

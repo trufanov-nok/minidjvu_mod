@@ -128,6 +128,12 @@ MDJVU_IMPLEMENT unsigned char *
     return BMP->data[i];
 }
 
+MDJVU_IMPLEMENT unsigned char **
+    mdjvu_bitmap_access_packed_data(mdjvu_bitmap_t b)
+{
+    return BMP->data;
+}
+
 MDJVU_IMPLEMENT void mdjvu_bitmap_clear(mdjvu_bitmap_t b)
 {
     memset(BMP->data[0], 0, BMP->height * ROW_SIZE);

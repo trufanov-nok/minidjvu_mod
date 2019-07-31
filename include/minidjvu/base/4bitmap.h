@@ -46,6 +46,9 @@ MDJVU_FUNCTION int32 mdjvu_bitmap_get_packed_row_size(mdjvu_bitmap_t);
 MDJVU_FUNCTION unsigned char *
     mdjvu_bitmap_access_packed_row(mdjvu_bitmap_t, int32);
 
+MDJVU_FUNCTION unsigned char **
+    mdjvu_bitmap_access_packed_data(mdjvu_bitmap_t b);
+
 /* Fill a given row by the shape's row with the given Y coordinate.
  * The coordinate varies from 0 (top) to height-1 (bottom).
  * The memory should be enough to write <width> bytes.

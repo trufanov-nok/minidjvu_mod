@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <endian.h>
 
 
 unsigned char **allocate_bitmap(int w, int h)
@@ -112,6 +113,71 @@ void assign_bitmap(unsigned char **dst, unsigned char **src, int w, int h)
         memcpy(dst[i], src[i], w);
 }
 
+void assign_unpacked_bitmap(unsigned char **dst, unsigned char **src, int w, int h)
+{
+    const unsigned int row_size = (w + 7) >> 3;
+    int i;
+    for (i = 0; i < h; i++)
+        memcpy(dst[i], src[i], row_size);
+}
+
+
+#if __BYTE_ORDER == __BIG_ENDIAN
+inline size_t swap_t(size_t* val, int size) {
+    if (size >= sizeof (size_t))
+        return *val;
+
+    size_t res = 0;
+    memcpy(&res, val, size);
+    return res;
+}
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
+inline size_t swap_t(size_t* val, unsigned int size) {
+    size_t res = 0;
+    unsigned char * a = (unsigned char *) &res;
+    memcpy(&res, val, size);
+    unsigned char t;
+    for (unsigned int i = 0; i < (sizeof (size_t)/2); i++) {
+        t = a[i];
+        a[i] = a[sizeof (size_t) - i - 1];
+        a[sizeof (size_t) - i - 1] = t;
+    }
+    return res;
+}
+#endif
+
+void assign_unpacked_bitmap_with_shift(unsigned char **dst, unsigned char **src, int w, int h, int N)
+{
+    const size_t int_len_in_bits = sizeof (size_t)*8;
+    assert(N < 8);
+
+    const size_t true_len = (w + (int_len_in_bits -1) ) / int_len_in_bits;
+    const size_t true_tail_len = (w % int_len_in_bits) ? ((w % int_len_in_bits) + 7) >> 3 : sizeof (size_t);
+
+    w += N;
+    const size_t len = (w + (int_len_in_bits -1) ) / int_len_in_bits;
+    const size_t tail_len = (w % int_len_in_bits) ? ((w % int_len_in_bits) + 7) >> 3 : sizeof (size_t);
+
+    for (int y = 0; y < h; y++) {
+        size_t *d_p = (size_t *) dst[y+N];
+        size_t *s_p = (size_t *) src[y];
+
+        size_t buf = 0;
+
+        for (unsigned int i = 0; i < len; i++) {
+            size_t cur = 0;
+            if (i < true_len) {
+               cur = swap_t(s_p++, i==true_len-1?true_tail_len:sizeof (size_t));
+            }
+
+            size_t val = buf | (cur >> N);
+            buf = cur << (int_len_in_bits - N);
+
+            val = swap_t(&val, /*i==len-1?tail_len:*/sizeof (size_t));
+            memcpy(d_p++, &val, (i==len-1)?tail_len:sizeof (size_t));
+        }
+    }
+}
 
 unsigned char **copy_bitmap(unsigned char **src, int w, int h)
 {
@@ -210,6 +276,53 @@ void invert_bitmap_0_or_1(unsigned char **pixels, int w, int h)
     }
 
 
+}
+
+void invert_bitmap(unsigned char **pixels, int w, int h)
+{
+    const int int_len_in_bytes = sizeof (size_t);
+    const size_t tail_mask = (~(size_t)0) << (sizeof (size_t)*8 - (w % (sizeof (size_t)*8)));
+
+//    w = (w + 7) >> 3;
+    const int len = w / (int_len_in_bytes*8);
+    const int tail_len = ((w % (int_len_in_bytes*8)) + 7) >> 3;
+
+    for (int j = 0; j < h; j++) {
+        size_t * row_i = (size_t *) pixels[j];
+
+        for (int i = 0; i < len; i++) {
+            *row_i = ~*row_i;
+            row_i++;
+        }
+
+        if (tail_len) {
+            size_t val = swap_t(row_i, tail_len);
+            val = ~val & tail_mask;
+            val = swap_t(&val, sizeof (size_t));
+            memcpy(row_i, &val, tail_len);
+        }
+    }
+}
+
+void invert_bitmap_old(unsigned char **pixels, int w, int h, int first_make_it_0_or_1)
+{
+    int x, y;
+
+       for (y = 0; y < h; y++)
+       {
+           unsigned char *row = pixels[y];
+
+           if (first_make_it_0_or_1)
+           {
+               for (x = 0; x < w; x++)
+                   row[x] = ( row[x] ? 0 : 1 );
+           }
+           else
+           {
+               for (x = 0; x < w; x++)
+                   row[x] = 1 - row[x];
+           }
+       }
 }
 
 

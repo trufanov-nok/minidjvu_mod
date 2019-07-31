@@ -15,11 +15,10 @@
 #include <string.h>
 #include <assert.h>
 #include <math.h>
-
+#include <endian.h>
 
 #define TIMES_TO_THIN 1
 #define TIMES_TO_THICKEN 1
-
 
 #define SIGNATURE_SIZE 32
 
@@ -133,6 +132,8 @@ typedef struct ComparableImageData
     byte **pixels; /* 0 - purely white, 255 - purely black (inverse to PGM!) */
     byte **pith2_inner;
     byte **pith2_outer;
+//    byte **pith2_inner_old;
+//    byte **pith2_outer_old;
     int32 width, height, mass;
     int32 mass_center_x, mass_center_y;
     byte signature[SIGNATURE_SIZE];  /* for shiftdiff 1 and 3 tests */
@@ -215,6 +216,7 @@ static int32 distance_by_pixeldiff_functions_by_shift(Image *i1, Image *i2,
 
         /* calculate difference in the i-th line */
 
+
         if (i < 0 || i >= h2)
         {
             /* calculate difference of i1 with white */
@@ -255,7 +257,9 @@ static int32 distance_by_pixeldiff_functions_by_shift(Image *i1, Image *i2,
             }
         }
 
-        if (score >= ceiling) return INT32_MAX;
+        if (score >= ceiling) {
+            return INT32_MAX;
+        }
     }
     return score;
 }
@@ -390,21 +394,6 @@ static int shiftdiff_equivalence(byte *s1, byte *s2, double falloff, double veto
 #endif
 /* shift signature comparison }}} */
 
-#ifndef NO_MINIDJVU
-mdjvu_pattern_t mdjvu_pattern_create(mdjvu_matcher_options_t opt, mdjvu_bitmap_t bitmap)
-{
-    /* not calling mdjvu_init() since we already have a bitmap */
-    int32 w = mdjvu_bitmap_get_width(bitmap);
-    int32 h = mdjvu_bitmap_get_height(bitmap);
-    mdjvu_pattern_t pattern;
-    byte **pixels = mdjvu_create_2d_array(w, h);
-    mdjvu_bitmap_unpack_all(bitmap, pixels);
-    pattern = mdjvu_pattern_create_from_array(opt, pixels, w, h);
-    mdjvu_destroy_2d_array(pixels);
-    return pattern;
-}
-#endif
-
 /* Finding mass center {{{ */
 
 static void get_mass_center(unsigned char **pixels, int32 w, int32 h,
@@ -432,44 +421,94 @@ static void get_mass_center(unsigned char **pixels, int32 w, int32 h,
 /* Finding mass center }}} */
 
 
-/* get a center (in 1/MDJVU_CENTER_QUANT pixels; defined in the header for image) */
-MDJVU_IMPLEMENT void mdjvu_pattern_get_center(mdjvu_pattern_t p, int32 *cx, int32 *cy)
-{
-    *cx = ((Image *) p)->mass_center_x;
-    *cy = ((Image *) p)->mass_center_y;
+#if __BYTE_ORDER == __BIG_ENDIAN
+inline size_t swap_t(size_t* val, int size) {
+    if (size >= sizeof (size_t))
+        return *val;
+
+    size_t res = 0;
+    memcpy(&res, val, size);
+    return res;
 }
+#elif __BYTE_ORDER == __LITTLE_ENDIAN
+inline size_t swap_t(size_t* val, unsigned int size) {
+    size_t res_buf = 0;
+    memcpy(&res_buf, val, size);
+
+    unsigned char * a = (unsigned char *) &res_buf;
+    for (unsigned int i = 0; i < (sizeof (size_t)/2); i++) {
+        unsigned char t = a[i];
+        a[i] = a[sizeof (size_t) - i - 1];
+        a[sizeof (size_t) - i - 1] = t;
+    }
+    return res_buf;
+}
+#endif
 
 static void sweep(unsigned char **pixels, unsigned char **source, int w, int h)
 {
-    const int int_len_in_bytes = sizeof (size_t);
-    const int len = w / int_len_in_bytes;
-    const int tail_len = w % int_len_in_bytes;
+    /* pretty same implementation as in mdjvu_smooth() */
+
+    const size_t int_len_in_bits = sizeof (size_t)*8;
+    const size_t len = (w + (int_len_in_bits -1) ) / int_len_in_bits;
+    const size_t tail_len = (w % int_len_in_bits) ? ((w % int_len_in_bits) + 7) >> 3 : sizeof (size_t);
+
+    const size_t mask1 = (~(size_t)0x0) << 1; //0b11111..110
+    const size_t mask2 = (size_t)0x01 << (int_len_in_bits-1); //0b100000.00
+    const size_t mask3 = mask2 >> 1; //0b01000..00
+    const size_t mask4 = mask3 >> 1; //0b00100..00
+    const size_t mask5 = mask1 & ~mask2; //0b01111..10
 
     for (int y = 0; y < h; y++) {
-        size_t *row    = (size_t*) pixels[y];
-        size_t *srow   = (size_t*) source[y];
-        size_t *srow_l = (size_t*) (source[y] - 1);
-        size_t *srow_r = (size_t*) (source[y] + 1);
-        size_t *supper = (size_t*) source[y-1];
-        size_t *slower = (size_t*) source[y+1];
+        size_t *r_p = (size_t *) pixels[y]; /* result    */
+        size_t *u_p = (y > 0) ? (size_t *) source[y-1] : NULL;
+        size_t *t_p = (size_t *) source[y];
+        size_t *l_p = (y+1 < h) ? (size_t *) source[y+1] : NULL;
 
-        for (int i = 0; i < len; i++) {
-            *row++ = *supper++ | *srow_l++ | *srow++ | *srow_r++ | *slower++;
-         }
+        size_t u_buf = 0, t_buf = 0, l_buf = 0;
+        size_t u_val = 0, t_val = 0, l_val = 0;
+        size_t u_cur = 0, t_cur = 0, l_cur = 0;
 
-        if (tail_len) {
-            size_t r = 0;
-            memcpy(&r, supper, tail_len);
-            size_t val = r;
-            memcpy(&r, srow_l, tail_len);
-            val |= r;
-            memcpy(&r, srow, tail_len);
-            val |= r;
-            memcpy(&r, srow_r, tail_len);
-            val |= r;
-            memcpy(&r, slower, tail_len);
-            val |= r;
-            memcpy(row, &val, tail_len);
+        for (unsigned int i = 0; i < len; i++) {
+            if (u_p) {
+                u_cur = swap_t(u_p++, i==len-1?tail_len:sizeof (size_t));
+                u_val = u_buf | (u_cur >> 2);
+                u_buf = u_cur << (int_len_in_bits - 2);
+            }
+            if (l_p) {
+                l_cur = swap_t(l_p++, i==len-1?tail_len:sizeof (size_t));
+                l_val = l_buf | (l_cur >> 2);
+                l_buf = l_cur << (int_len_in_bits - 2);
+            }
+
+            t_cur = swap_t(t_p++, i==len-1?tail_len:sizeof (size_t));
+            t_val = t_buf | (t_cur >> 2);
+            t_buf = t_cur << (int_len_in_bits - 2);
+
+            size_t res = u_val | (t_val << 1) | t_val | (t_val >> 1) | l_val;
+
+            size_t tail = res & mask3;
+            size_t head = res & mask4;
+
+            if (tail && i) {
+                // for i == 0 tail is always false and this is not called
+                // we access last byte instead of size_t* to not mess with int endiannes
+                *(((unsigned char *)r_p)-1) |= 1; // last bit is always 0 bcs of mask5
+            }
+
+
+            res = u_cur | (t_cur << 1) | t_cur | (t_cur >> 1) | l_cur;
+
+            if (i != len-1) {
+                res &= mask5;
+            }
+
+            if (head) {
+                res |= mask2;
+            }
+
+            res = swap_t(&res, /*i==len-1?-1*tail_len:*/sizeof (size_t));
+            memcpy(r_p++, &res, (i==len-1)?tail_len:sizeof (size_t));
         }
     }
 
@@ -477,27 +516,98 @@ static void sweep(unsigned char **pixels, unsigned char **source, int w, int h)
 
 static unsigned char **quick_thin(unsigned char **pixels, int w, int h, int N)
 {
-    unsigned char **aux = provide_margins(pixels, w, h, 1);
-    unsigned char **buf = allocate_bitmap_with_white_margins(w, h);
+    const int row_size = (w+7) >> 3;
 
-    clear_bitmap(buf, w, h);
-    invert_bitmap_0_or_1(aux, w, h);
+    unsigned char **aux = mdjvu_create_2d_array(row_size, h);
+    memcpy(aux[0], pixels[0], row_size*h);
+    unsigned char **buf = mdjvu_create_2d_array(row_size, h);
+    memset(buf[0], 0, row_size*h);
+
+    invert_bitmap(aux, w, h);
 
     while (N--)
     {
         sweep(buf, aux, w, h);
         if (N) {
-            assign_bitmap(aux, buf, w, h);
+            assign_unpacked_bitmap(aux, buf, w, h);
         }
     }
 
-    invert_bitmap_0_or_1(buf, w, h);
+    invert_bitmap(buf, w, h);
+
+    mdjvu_destroy_2d_array(aux);
+    return buf;
+}
+
+static unsigned char **quick_thicken(unsigned char **pixels, int w, int h, int N)
+{
+    int r_w = w + N * 2;
+    int r_h = h + N * 2;
+
+    const int row_size = (r_w+7) >> 3;
+
+    unsigned char **aux = mdjvu_create_2d_array(row_size, r_h);
+    memset(aux[0], 0, row_size*r_h);
+    assign_unpacked_bitmap_with_shift(aux, pixels, w, h, N);
+    unsigned char **buf = mdjvu_create_2d_array(row_size, r_h);
+    memset(buf[0], 0, row_size*r_h);
+
+
+    while (N--)
+    {
+        sweep(buf, aux, r_w, r_h);
+        if (N) {
+            assign_unpacked_bitmap(aux, buf, r_w, r_h);
+        }
+    }
+
+    mdjvu_destroy_2d_array(aux);
+    return buf;
+}
+
+
+
+static void sweep_old(unsigned char **pixels, unsigned char **source, int w, int h)
+{
+    int x, y;
+
+    for (y = 0; y < h; y++)
+    {
+        unsigned char *row    = pixels[y];
+        unsigned char *srow   = source[y];
+        unsigned char *supper = source[y-1];
+        unsigned char *slower = source[y+1];
+
+        for (x = 0; x < w; x++)
+        {
+            row[x] = (  supper[x] |
+                        srow[x-1] | srow[x] | srow[x+1] |
+                        slower[x] );
+        }
+    }
+}
+
+static unsigned char **quick_thin_old(unsigned char **pixels, int w, int h, int N)
+{
+    unsigned char **aux = provide_margins(pixels, w, h, 1);
+    unsigned char **buf = allocate_bitmap_with_white_margins(w, h);
+
+    clear_bitmap(buf, w, h);
+    invert_bitmap_old(aux, w, h, 0);
+
+    while (N--)
+    {
+        sweep_old(buf, aux, w, h);
+        assign_bitmap(aux, buf, w, h);
+    }
+
+    invert_bitmap_old(buf, w, h, 0);
 
     free_bitmap_with_margins(aux);
     return buf;
 }
 
-static unsigned char **quick_thicken(unsigned char **pixels, int w, int h, int N)
+static unsigned char **quick_thicken_old(unsigned char **pixels, int w, int h, int N)
 {
     int r_w = w + N * 2;
     int r_h = h + N * 2;
@@ -514,7 +624,7 @@ static unsigned char **quick_thicken(unsigned char **pixels, int w, int h, int N
 
     while (N--)
     {
-        sweep(buf, aux, r_w, r_h);
+        sweep_old(buf, aux, r_w, r_h);
         if (N) {
             assign_bitmap(aux, buf, r_w, r_h);
         }
@@ -524,32 +634,22 @@ static unsigned char **quick_thicken(unsigned char **pixels, int w, int h, int N
     return buf;
 }
 
-MDJVU_IMPLEMENT mdjvu_pattern_t mdjvu_pattern_create_from_array(mdjvu_matcher_options_t m_opt, byte **pixels, int32 w, int32 h)/*{{{*/
-{
-    Options *opt = (Options *) m_opt;
-    int32 i, mass;
-    Image *img = MALLOC1(Image);
 
+#ifndef NO_MINIDJVU
+mdjvu_pattern_t mdjvu_pattern_create(mdjvu_matcher_options_t opt, mdjvu_bitmap_t bitmap)
+{
     mdjvu_init();
+
+    Options *m_opt = (Options *) opt;
+    Image *img = MALLOC1(Image);
+    int32 w = mdjvu_bitmap_get_width(bitmap);
+    int32 h = mdjvu_bitmap_get_height(bitmap);
 
     img->width = w;
     img->height = h;
-
     img->pixels = allocate_bitmap(w, h);
-    memset(img->pixels[0], 0, w * h);
-
-    mass = 0;
-    for (i = 0; i < h; i++)
-    {
-        int32 j;
-        for (j = 0; j < w; j++)
-            if (pixels[i][j])
-            {
-                img->pixels[i][j] = 255; /* i don't remember what for */
-                mass += 1;
-            }
-    }
-    img->mass = mass;
+    mdjvu_bitmap_unpack_all(bitmap, img->pixels);
+    img->mass = mdjvu_bitmap_get_mass(bitmap);
 
     mdjvu_soften_pattern(img->pixels, img->pixels, w, h);
 
@@ -561,16 +661,50 @@ MDJVU_IMPLEMENT mdjvu_pattern_t mdjvu_pattern_create_from_array(mdjvu_matcher_op
     mdjvu_get_black_and_white_signature(img->pixels, w, h,
                                         img->signature2, SIGNATURE_SIZE);
 
-    if (!opt->aggression)
+    if (!m_opt->aggression)
     {
         free_bitmap(img->pixels);
         img->pixels = NULL;
     }
 
-    if (opt->method & MDJVU_MATCHER_PITH_2)
+    if (m_opt->method & MDJVU_MATCHER_PITH_2)
     {
-        img->pith2_inner = quick_thin(pixels, w, h, TIMES_TO_THIN);
-        img->pith2_outer = quick_thicken(pixels, w, h, TIMES_TO_THICKEN);
+        img->pith2_inner = quick_thin( mdjvu_bitmap_access_packed_data(bitmap), w, h, TIMES_TO_THIN);
+        img->pith2_outer = quick_thicken( mdjvu_bitmap_access_packed_data(bitmap), w, h, TIMES_TO_THICKEN);
+
+//        byte **pixels = mdjvu_create_2d_array(w, h);
+//        mdjvu_bitmap_unpack_all(bitmap, pixels);
+//        img->pith2_inner_old = quick_thin_old(pixels, w, h, TIMES_TO_THIN); //quick_thin_old(pixels, w, h, TIMES_TO_THIN);
+//        img->pith2_outer_old = quick_thicken_old(pixels, w, h, TIMES_TO_THICKEN);
+//        mdjvu_destroy_2d_array(pixels);
+//        byte **pixels = mdjvu_create_2d_array(w, h);
+//        mdjvu_bitmap_unpack_all(bitmap, pixels);
+//        byte ** temp =  quick_thin_old(pixels, w, h, TIMES_TO_THIN); //quick_thin_old(pixels, w, h, TIMES_TO_THIN);
+//        mdjvu_destroy_2d_array(pixels);
+//        mdjvu_bitmap_t tt = mdjvu_bitmap_create(w/*+TIMES_TO_THICKEN*2*/, h/*+TIMES_TO_THICKEN*2*/);
+//        mdjvu_bitmap_pack_all(tt, temp);
+//        free_bitmap_with_margins(temp);
+
+//        // comp
+//        int rr = 0;
+
+
+//        for (int y = 0; y < h/*+TIMES_TO_THICKEN*2*/; y++) {
+//            unsigned char* c1 = mdjvu_bitmap_access_packed_row(tt, y);
+//            unsigned char* c2 = img->pith2_inner[y];
+//            for (int x = 0; x < (w/*+TIMES_TO_THICKEN*2*/+7)>>3; x++) {
+//                if (c1[x] != c2[x]) {
+//                    fprintf(stderr, "err %u %u: %u %u %u\n",c1[x],c2[x], y, x, w+TIMES_TO_THICKEN*2);
+//                    int sadfa = pow(1,43);
+//                    rr = sadfa;
+//                }
+//            }
+
+//        }
+
+
+//        mdjvu_bitmap_destroy(tt);
+
         assert(img->pith2_inner);
         assert(img->pith2_outer);
     }
@@ -581,11 +715,179 @@ MDJVU_IMPLEMENT mdjvu_pattern_t mdjvu_pattern_create_from_array(mdjvu_matcher_op
     }
 
     return (mdjvu_pattern_t) img;
-}/*}}}*/
+}
+#endif
 
 
+/* get a center (in 1/MDJVU_CENTER_QUANT pixels; defined in the header for image) */
+MDJVU_IMPLEMENT void mdjvu_pattern_get_center(mdjvu_pattern_t p, int32 *cx, int32 *cy)
+{
+    *cx = ((Image *) p)->mass_center_x;
+    *cy = ((Image *) p)->mass_center_y;
+}
 
-static int32 pith2_row_subset(byte *A, byte *B, int32 length)
+
+// Generate a lookup table for 8 bit integers
+#define B2(n) n, n + 1, n + 1, n + 2
+#define B4(n) B2(n), B2(n + 1), B2(n + 1), B2(n + 2)
+#define B6(n) B4(n), B4(n + 1), B4(n + 1), B4(n + 2)
+
+// Lookup table that store the sum of bits for all uchar values
+
+const unsigned char lookup_table[256] = { B6(0), B6(1), B6(1), B6(2) };
+
+
+inline int32 pith2_calc_val(size_t val) {
+    unsigned char* v = (unsigned char*) &val;
+    int32 s = 0;
+    for (int i = 0; i < sizeof(size_t); i++)
+        s += lookup_table[v[i]];
+    return s;
+}
+
+inline size_t pith2_row_subset_op(size_t val_a, size_t val_b, char inverted) {
+    return (inverted)    ?    val_b & ~val_a    :    val_a & ~val_b;
+}
+
+static int32 pith2_row_subset(byte *A, int32 pos_a, byte *B, int32 pos_b, int32 w)
+{   
+    A += pos_a / 8; pos_a %= 8;
+    B += pos_b / 8; pos_b %= 8;
+
+    char inv = 0;
+    if (pos_a < pos_b) {
+        byte* t = A; A = B; B = t;
+        int32 p = pos_a; pos_a = pos_b; pos_b = p;
+        inv = 1;
+    }
+
+    const int size_t_len_bits = sizeof(size_t)*8;
+    const unsigned char shift_right = pos_a - pos_b; // shift_right is < 8
+
+    const size_t mask = ~(size_t)0;
+    const size_t start_mask = mask >> pos_a;
+    const size_t end_mask   = mask << (size_t_len_bits - ( (pos_a + w) % size_t_len_bits)) % size_t_len_bits;
+
+    int len_a = (pos_a + w) / size_t_len_bits;
+    int len_b = (pos_b + w) / size_t_len_bits;
+    int tail_a = (((pos_a + w) % size_t_len_bits) + 7) >> 3;
+    int tail_b = (((pos_b + w) % size_t_len_bits) + 7) >> 3;
+    if (!tail_a) {
+        len_a--; tail_a = sizeof(size_t);
+    }
+    if (!tail_b) {
+        len_b--; tail_b = sizeof(size_t);
+    }
+
+    size_t * a = (size_t *) A;
+    size_t * b = (size_t *) B;
+
+    size_t val_a, val_b, buf = 0;
+
+    int first = 1;
+    int32 s = 0;
+    while (len_a >= 0) { // len_a >= len_b
+        if (len_a > 0) {
+            val_a = swap_t(a++, sizeof(size_t));
+        } else if (len_a == 0 && tail_a) {
+            val_a = swap_t(a, tail_a);
+        } else val_a = 0;
+
+        if (len_b > 0) {
+            val_b = swap_t(b++, sizeof(size_t));
+        } else if (len_b == 0 && tail_b) {
+            val_b = swap_t(b, tail_b);
+        } else val_b = 0;
+
+        if (shift_right) {
+            size_t t = val_b << (size_t_len_bits - shift_right);
+            val_b = buf | (val_b >> shift_right);
+            buf = t;
+        }
+
+        size_t val =  pith2_row_subset_op(val_a, val_b, inv);
+
+        if (first) {
+            val &= start_mask;
+            first = 0;
+        }
+        if (len_a == 0) {
+            val &= end_mask;
+        }
+
+        len_a--; len_b--;
+
+        s += pith2_calc_val( val );
+    }
+
+//    if (!(len_a+len_b)) {
+//        val_a = swap_t(a, tail_a);
+//        val_b = swap_t(b, tail_b);
+//        val_a &= start_mask_a & end_mask_a;
+//        val_b &= start_mask_b & end_mask_b;
+//        val_b >>= shift_right;
+//        val_a = pith2_row_subset_op(val_a, val_b, inv);
+//        return pith2_calc_val(val_a) * 255;
+//    }
+
+//    val_a = *a++ & start_mask_a;
+//    val_b = *b++ & start_mask_b;
+
+//    val_a = swap_t(&val_a, sizeof(size_t));
+//    val_b = swap_t(&val_b, sizeof(size_t));
+
+//    buf = val_b << (sizeof(size_t) - shift_right);
+//    val_b >>= shift_right;
+
+//    int32 s = pith2_calc_val( pith2_row_subset_op(val_a, val_b, inv) );
+
+//    for (int i = 1; i < len -1; i++) {
+//         val_a = swap_t(a++, sizeof(size_t));
+//         val_b = swap_t(b++, sizeof(size_t));
+//         size_t t = val_b << (sizeof(size_t) - shift_right);
+//         val_b = buf | (val_b >> shift_right);
+//         buf = t;
+//         s += pith2_calc_val( pith2_row_subset_op(val_a, val_b, inv) );
+//    }
+
+//    val_a = val_b = 0;
+//    if (tail_a)
+//    memcpy(&val_a, a, tail_a);
+//    if (tail_b)
+//    memcpy(&val_b, b, tail_b);
+//    val_a &= end_mask_a;
+//    val_b &= end_mask_b;
+//    val_a = swap_t(&val_a, sizeof(size_t));
+//    val_b = swap_t(&val_b, sizeof(size_t));
+//    val_b = buf | (val_b >> shift_right);
+//    val_a = pith2_row_subset_op(val_a, val_b, inv);
+//    s += pith2_calc_val(val_a);
+
+    return s * 255;
+}
+
+static int32 pith2_row_has_black(byte *row, int32 start_idx, int32 length)
+{
+    if (!length) return 0;
+
+    row += start_idx / 8;
+    start_idx %= 8;
+    const unsigned char start_mask = 0xFF >> start_idx;
+    const unsigned char end_mask   =  0xFF << ((8 - ( (start_idx + length) % 8)) % 8);
+    const int32 len = ((start_idx + length + 7) >> 3) - 1;
+
+    if (len) {
+        int32 i, s = lookup_table[row[0] & start_mask];
+        for (i = 1; i < len; i++) {
+            s += lookup_table[row[i]];
+        }
+        s += lookup_table[row[len] & end_mask];
+        return s * 255;
+    }
+    return lookup_table[*row & start_mask & end_mask] * 255;
+}
+
+static int32 pith2_row_subset_old(byte *A, byte *B, int32 length)
 {
     int32 i, s = 0;
     for (i = 0; i < length; i++)
@@ -596,7 +898,7 @@ static int32 pith2_row_subset(byte *A, byte *B, int32 length)
     return s;
 }
 
-static int32 pith2_row_has_black(byte *row, int32 length)
+static int32 pith2_row_has_black_old(byte *row, int32 length)
 {
     int32 i, s = 0;
     for (i = 0; i < length; i++)
@@ -612,38 +914,135 @@ static int32 pith2_return_0(byte *A, int32 length)
     return 0;
 }
 
+
 static int pith2_is_subset(mdjvu_pattern_t ptr1, mdjvu_pattern_t ptr2, double threshold, int32 dpi)
 {
-    Image *i1 = (Image *) ptr1;
-    Image *i2 = (Image *) ptr2;
+    Image *img1 = (Image *) ptr1;
+    Image *img2 = (Image *) ptr2;
     Image ptr1_inner;
     Image ptr2_outer;
-    int32 perimeter = i1->width + i1->height + i2->width + i2->height;
+    int32 perimeter = img1->width + img1->height + img2->width + img2->height;
     int32 ceiling = (int32) (pithdiff2_veto_threshold * dpi * perimeter / 100);
     int32 d = 0;
 
-    ptr1_inner.pixels = i1->pith2_inner;
-    assert(i1->pith2_inner);
-    ptr1_inner.width  = i1->width;
-    ptr1_inner.height = i1->height;
-    ptr1_inner.mass_center_x = i1->mass_center_x;
-    ptr1_inner.mass_center_y = i1->mass_center_y;
+    ptr1_inner.pixels = img1->pith2_inner;
+    assert(img1->pith2_inner);
+    ptr1_inner.width  = img1->width;
+    ptr1_inner.height = img1->height;
+    ptr1_inner.mass_center_x = img1->mass_center_x;
+    ptr1_inner.mass_center_y = img1->mass_center_y;
 
-    ptr2_outer.pixels = i2->pith2_outer;
-    assert(i2->pith2_outer);
-    ptr2_outer.width  = i2->width  + TIMES_TO_THICKEN*2;
-    ptr2_outer.height = i2->height + TIMES_TO_THICKEN*2;
-    ptr2_outer.mass_center_x = i2->mass_center_x + MDJVU_CENTER_QUANT;
-    ptr2_outer.mass_center_y = i2->mass_center_y + MDJVU_CENTER_QUANT;
+    ptr2_outer.pixels = img2->pith2_outer;
+    assert(img2->pith2_outer);
+    ptr2_outer.width  = img2->width  + TIMES_TO_THICKEN*2;
+    ptr2_outer.height = img2->height + TIMES_TO_THICKEN*2;
+    ptr2_outer.mass_center_x = img2->mass_center_x + MDJVU_CENTER_QUANT;
+    ptr2_outer.mass_center_y = img2->mass_center_y + MDJVU_CENTER_QUANT;
 
-    d = distance_by_pixeldiff_functions(&ptr1_inner, &ptr2_outer,
-        &pith2_row_subset,
-        &pith2_row_has_black,
-        &pith2_return_0,
-        ceiling);
 
-    if (d == INT32_MAX) return -1;
-    else if (d < threshold * dpi * perimeter / 100) return 1;
+    Image *i1 = &ptr1_inner;
+    Image *i2 = &ptr2_outer;
+
+//    int32 score2 = distance_by_pixeldiff_functions(&ptr1_inner, &ptr2_outer,
+//        &pith2_row_subset_old,
+//        &pith2_row_has_black_old,
+//        &pith2_return_0,
+//        ceiling);
+
+
+//    ptr1_inner.pixels = img1->pith2_inner;
+//    ptr2_outer.pixels = img2->pith2_outer;
+
+    int32 shift_x, shift_y; /* of i1's coordinate system with respect to i2 */
+    int32 w1, w2, h1, h2;
+    {
+        /* make i1 to be narrower than i2 */
+        if (i1->width > i2->width)
+        {
+            Image* img = i1;
+            i1 = i2;
+            i2 = img;
+        }
+
+        w1 = i1->width; h1 = i1->height;
+        w2 = i2->width; h2 = i2->height;
+
+        /* (shift_x, shift_y) */
+        /*     is what should be added to i1's coordinates to get i2's coordinates. */
+        shift_x = (w2 - w2/2) - (w1 - w1/2); /* center favors right */
+        shift_y = h2/2 - h1/2;               /* center favors top */
+
+        shift_x = i2->mass_center_x - i1->mass_center_x;
+        if (shift_x < 0)
+            shift_x = (shift_x - MDJVU_CENTER_QUANT / 2) / MDJVU_CENTER_QUANT;
+        else
+            shift_x = (shift_x + MDJVU_CENTER_QUANT / 2) / MDJVU_CENTER_QUANT;
+
+        shift_y = i2->mass_center_y - i1->mass_center_y;
+        if (shift_y < 0)
+            shift_y = (shift_y - MDJVU_CENTER_QUANT / 2) / MDJVU_CENTER_QUANT;
+        else
+            shift_y = (shift_y + MDJVU_CENTER_QUANT / 2) / MDJVU_CENTER_QUANT;
+    }
+
+//    distance_by_pixeldiff_functions_by_shift(
+//            i1, i2, compare_row, compare_1_with_white, compare_2_with_white,
+//            ceiling, shift_x, shift_y);
+
+    int32 score = 0;
+
+    {
+        int32 min_y = shift_y < 0 ? shift_y : 0;
+        int32 right1 = shift_x + w1;
+        int32 max_y_plus_1 = h2 > shift_y + h1 ? h2 : shift_y + h1;
+        int32 i;
+        int32 min_overlap_x = shift_x > 0 ? shift_x : 0;
+        int32 max_overlap_x_plus_1 = w2 < right1 ? w2 : right1;
+        int32 min_overlap_x_for_i1 = min_overlap_x - shift_x;
+        int32 max_overlap_x_plus_1_for_i1 = max_overlap_x_plus_1 - shift_x;
+        int32 overlap_length = max_overlap_x_plus_1 - min_overlap_x;
+
+        if (overlap_length <= 0) return -1;
+
+        for (i = min_y; i < max_y_plus_1; i++)
+        {
+            int32 y1 = i - shift_y;
+
+            /* calculate difference in the i-th line */
+
+            if (i < 0 || i >= h2)
+            {
+                /* calculate difference of i1 with white */
+                score += pith2_row_has_black(i1->pixels[y1], 0, w1);
+            }
+            else if (i >= shift_y && i < shift_y + h1)
+            {
+                /* calculate difference in a line where the bitmaps overlap */
+                score += pith2_row_subset(i1->pixels[y1], min_overlap_x_for_i1,
+                                          i2->pixels[i],  min_overlap_x,
+                                          overlap_length);
+
+
+                /* calculate penalty for the left margin */
+                if (min_overlap_x <= 0) {
+                    score += pith2_row_has_black(i1->pixels[y1], 0, min_overlap_x_for_i1);
+                }
+
+                /* calculate penalty for the right margin */
+                if (max_overlap_x_plus_1 >= w2) {
+                    score += pith2_row_has_black(
+                                i1->pixels[y1], max_overlap_x_plus_1_for_i1,
+                                w1 - max_overlap_x_plus_1_for_i1);
+
+                }
+            }
+
+            if (score >= ceiling) return -1;
+        }
+    }
+
+
+    if (score < threshold * dpi * perimeter / 100) return 1;
     return 0;
 }
 
@@ -728,11 +1127,14 @@ MDJVU_IMPLEMENT int mdjvu_match_patterns(mdjvu_pattern_t ptr1, mdjvu_pattern_t p
 MDJVU_IMPLEMENT int mdjvu_pattern_mem_size(mdjvu_pattern_t p)
 {
    Image *img = (Image *) p;
-   int sq = img->width * img->height;
+   const int size_of_pointers_map = img->height * sizeof(unsigned char *);
+
    int res = sizeof(Image);
-   if (img->pixels) res += sq;
-   if (img->pith2_inner) res += sq;
-   if (img->pith2_outer) res += sq;
+   if (img->pixels) res += img->width * img->height + size_of_pointers_map;
+
+   const int row_size = (img->width + 7) >> 3;
+   if (img->pith2_inner) res += row_size * img->height + size_of_pointers_map;
+   if (img->pith2_outer) res += row_size * img->height + size_of_pointers_map;
    return res;
 }
 
@@ -743,10 +1145,16 @@ MDJVU_IMPLEMENT void mdjvu_pattern_destroy(mdjvu_pattern_t p)/*{{{*/
         free_bitmap(img->pixels);
 
     if (img->pith2_inner)
-        free_bitmap_with_margins(img->pith2_inner);
+        mdjvu_destroy_2d_array(img->pith2_inner);
 
     if (img->pith2_outer)
-        free_bitmap_with_margins(img->pith2_outer);
+        mdjvu_destroy_2d_array(img->pith2_outer);
+
+//    if (img->pith2_inner_old)
+//        free_bitmap_with_margins(img->pith2_inner_old);
+
+//    if (img->pith2_outer_old)
+//        free_bitmap_with_margins(img->pith2_outer_old);
 
     FREE1(img);
 }/*}}}*/
