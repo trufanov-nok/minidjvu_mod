@@ -71,6 +71,7 @@ typedef struct Class
     ClassNode *first, *last;
     struct Class *prev_class;
     struct Class *next_class;
+    ClassNode * compare_start_trick;
     int32 count;
 } Class;
 
@@ -116,7 +117,6 @@ static void delete_class(Classification *cl, Class *c)
 
     if (next)
         next->prev_class = prev;
-
     FREE(c);
 }
 
@@ -213,7 +213,7 @@ CachedResults new_cache(size_t size) {
 
         unsigned char* buf = MALLOCV(unsigned char, mem_req);
         if (buf) {
-            fprintf(stdout, "done\n", size, mem_req);
+            fprintf(stdout, "done\n", size);
         } else {
             fprintf(stdout, "ERROR!\n");
             exit(-1);
@@ -263,13 +263,11 @@ static void delete_cache(CachedResults* c) {
 	c->size = 0;
 }
 
-
 /* Compares p with nodes from c until a meaningful result. */
-static int compare_to_class(ClassNode* o, Class *c, mdjvu_matcher_options_t options, CachedResults* cache)
+static int compare_to_class(ClassNode* o, ClassNode* start_from, mdjvu_matcher_options_t options, CachedResults* cache)
 {
     int r = 0;
-    ClassNode *n = c->first;
-    ClassNode *prev = c->first;
+    ClassNode *n = start_from;
     int positive_matches = 0;
 
     while(n)
@@ -278,32 +276,18 @@ static int compare_to_class(ClassNode* o, Class *c, mdjvu_matcher_options_t opti
             unsigned char* line;
             r = get_cache_and_line(cache, o->id, n->id, &line);
             if (r == 2) {
-				r = mdjvu_match_patterns(o->ptr, n->ptr, n->dpi, options);
+                r = mdjvu_match_patterns(o->ptr, n->ptr, n->dpi, options);
                 set_cache_by_line(cache, line, o->id, n->id, r);
             }
         } else {
-			r = mdjvu_match_patterns(o->ptr, n->ptr, n->dpi, options);
+            r = mdjvu_match_patterns(o->ptr, n->ptr, n->dpi, options);
         }
 
         if (r == -1) { // definetely wrong class
-
-			if (n != c->first) {
-				// pop up the node that definetely doesn't match to the top
-				// of the list in class. That's statistically
-				// speed up matching to this class next time
-				prev->next = n->next;
-				n->next = c->first;
-				c->first = n;
-				if (c->last == n) {
-					c->last = prev;
-				}
-			}
-
             return 0;
         }
 
         positive_matches += (r==1);
-        prev = n;
         n = n->next;
     }
 
@@ -345,46 +329,63 @@ static void classify(Classification *cl, PatternList * all_patterns, mdjvu_match
 
     Class * c = cl->first_class;
     int classifier_level = mdjvu_get_classifier(mdjvu_get_classify_options(options));
+
+
     while (c->next_class != NULL) {
-        int merged;
+
+
+        Class * nc = c->next_class;
+        while (nc != NULL) {
+            nc->compare_start_trick = c->first;
+            nc = nc->next_class;
+        }
+
+        int changed;
+
         do {
-            merged = 0;
+            changed = 0;
             Class * next_c = c->next_class;
             Class * recheck_to_last_merged = NULL;
+            Class * next_recheck_to_last_merged = NULL;
             while (next_c != recheck_to_last_merged) {
                 Class * next_to_next_c = next_c->next_class; /* That's because c may be deleted in merging */
-                Class* comp1 = c->count >= next_c->count ? c : next_c;
-                Class* comp2 = c->count >= next_c->count ? next_c : c;
-                ClassNode * n = comp1->first;
-                char m = 0;
+                ClassNode* n = c->count >= next_c->count ? next_c->compare_start_trick : next_c->first;
+                ClassNode* n2 = c->count >= next_c->count ? next_c->first : next_c->compare_start_trick;
+                char need_merge = 0;
                 while (n) {
-					if (compare_to_class(n, comp2, options, cache)) {
-						recheck_to_last_merged = next_to_next_c;
-                        merge(cl, c, next_c);
-                        m = merged = 1;
+                    if (compare_to_class(n, n2, options, cache)) {
+                        need_merge = 1;
                         break;
                     }
-					n = n->next;
+                    n = n->next;
                 }
-                if (classifier_level > 2 && !m) {
-                    comp1 = c->count < next_c->count ? c : next_c;
-                    comp2 = c->count < next_c->count ? next_c : c;
-                    n = comp1->first;
+
+                if (classifier_level > 2 && !need_merge) {
+                    n = c->count < next_c->count ? next_c->compare_start_trick : next_c->first;
+                    n2 = c->count < next_c->count ? next_c->first : next_c->compare_start_trick;
                     while (n) {
-						if (compare_to_class(n, comp2, options, cache)) {
-							recheck_to_last_merged = next_to_next_c;
-                            merge(cl, c, next_c);
-                            merged = 1;
+                        if (compare_to_class(n, n2, options, cache)) {
+                            need_merge = 1;
                             break;
                         }
                         n = n->next;
                     }
                 }
+
+                if (need_merge) {
+                    next_recheck_to_last_merged = next_to_next_c;
+                    merge(cl, c, next_c);
+                    changed = 1;
+                } else {
+                    next_c->compare_start_trick = c->last;
+                }
+
                 next_c = next_to_next_c;
             }
 
+            recheck_to_last_merged = next_recheck_to_last_merged;
 
-        } while (classifier_level > 1 && merged);
+        } while (classifier_level > 1 && changed);
 
         c = c->next_class;
     }
