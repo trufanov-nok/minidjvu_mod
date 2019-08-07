@@ -29,7 +29,7 @@ int averaging = 0;
 int match = 0;
 int Match = 0;
 int aggression = 100;
-int classifier = 1;
+int classifier = 3;
 int erosion = 0;
 int clean = 0;
 int report = 0;
@@ -151,7 +151,7 @@ static void show_usage_and_exit(void)           /* {{{ */
     printf(_("Options:\n"));
     printf(_("    -A, --Averaging:               compute \"average\" representatives\n"));
     printf(_("    -a <n>, --aggression <n>:      set aggression level (default 100)\n"));
-    printf(_("    -C <n>, --Classifier <n>:      set symbols classifier mode (default 1)\n"));
+    printf(_("    -C <n>, --Classifier <n>:      set symbols classifier mode (default 3)\n"));
     printf(_("                                   1 - behave similar to original one.\n"));
     printf(_("                                   2 - make additional efforts to achieve\n"));
     printf(_("                                       better compression. This require\n"));
