@@ -799,7 +799,7 @@ int main(int argc, char **argv)
 
 
     arg_start = process_options(argc, argv);
-    if ( dict_suffix == NULL ) dict_suffix = "iff";
+    if ( dict_suffix == NULL ) dict_suffix = "djbz";
 
     argc -= arg_start - 1;
     argv += arg_start - 1;
