@@ -8,8 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-MDJVU_IMPLEMENT int mdjvu_file_save_djvu_dir(char **elements, int *sizes,
-    int n, mdjvu_file_t file, mdjvu_file_t tempfile, mdjvu_error_t *perr)
+MDJVU_IMPLEMENT int mdjvu_files_save_djvu_dir(char **elements, int *sizes,
+    int n, mdjvu_file_t file, mdjvu_file_t* tempfiles, int num_tempfiles, mdjvu_error_t *perr)
 {
     mdjvu_iff_t FORM, DIRM;
 
@@ -18,24 +18,25 @@ MDJVU_IMPLEMENT int mdjvu_file_save_djvu_dir(char **elements, int *sizes,
         mdjvu_write_big_endian_int32(MDJVU_IFF_ID("DJVM"), file);
 
         DIRM = mdjvu_iff_write_chunk(MDJVU_IFF_ID("DIRM"), file);
-            if (tempfile)
+            if (num_tempfiles)
                 mdjvu_write_dirm_bundled(elements, sizes, n, file, perr);
             else
                 mdjvu_write_dirm_indirect(elements, sizes, n, file, perr);
         mdjvu_iff_close_chunk(DIRM, file);
-        
-        if (tempfile)
-        {
+
+
+        for (int j = 0; j < num_tempfiles; j++) {
             int i, fpos, tpos;
-            tpos = ftell((FILE *) tempfile);
+            FILE * tempfile = (FILE *) tempfiles[j];
+            tpos = ftell(tempfile);
             fpos = ftell((FILE *) file);
-            
+
             if (fpos & 1) fputc('\0', (FILE *) file);
-            rewind((FILE *) tempfile);
-            
+            rewind(tempfile);
+
             for( i=0; i<tpos; i++)
             {
-                char ch = fgetc((FILE *) tempfile);
+                char ch = fgetc(tempfile);
                 fputc(ch, (FILE *) file);
             }
         }
@@ -45,6 +46,12 @@ MDJVU_IMPLEMENT int mdjvu_file_save_djvu_dir(char **elements, int *sizes,
     return 1;
 }
 
+MDJVU_IMPLEMENT int mdjvu_file_save_djvu_dir(char **elements, int *sizes,
+    int n, mdjvu_file_t file, mdjvu_file_t tempfile, mdjvu_error_t *perr)
+{
+    return mdjvu_files_save_djvu_dir(elements, sizes, n, file, &tempfile, (tempfile)?1:0, perr);
+}
+
 MDJVU_IMPLEMENT int mdjvu_file_save_djvu_page(mdjvu_image_t image, mdjvu_file_t file,
     const char *dict_name, int indirect, mdjvu_error_t *perr, int erosion)
 {
@@ -52,25 +59,26 @@ MDJVU_IMPLEMENT int mdjvu_file_save_djvu_page(mdjvu_image_t image, mdjvu_file_t 
     int pos = ftell((FILE *) file);
     if (pos & 1) pos++;
 
-    if (indirect)
+    if (indirect) {
         mdjvu_write_big_endian_int32(MDJVU_IFF_ID("AT&T"), file);
+    }
     FORM = mdjvu_iff_write_chunk(MDJVU_IFF_ID("FORM"), file);
-        mdjvu_write_big_endian_int32(MDJVU_IFF_ID("DJVU"), file);
+    mdjvu_write_big_endian_int32(MDJVU_IFF_ID("DJVU"), file);
 
-        INFO = mdjvu_iff_write_chunk(MDJVU_IFF_ID("INFO"), file);
-            mdjvu_write_info_chunk(file, image);
-        mdjvu_iff_close_chunk(INFO, file);
+    INFO = mdjvu_iff_write_chunk(MDJVU_IFF_ID("INFO"), file);
+    mdjvu_write_info_chunk(file, image);
+    mdjvu_iff_close_chunk(INFO, file);
 
-        if (dict_name)
-        {
-            INCL = mdjvu_iff_write_chunk(MDJVU_IFF_ID("INCL"), file);
-                fwrite(dict_name, 1, strlen(dict_name), (FILE *) file);
-            mdjvu_iff_close_chunk(INCL, file);
-        }
+    if (dict_name)
+    {
+        INCL = mdjvu_iff_write_chunk(MDJVU_IFF_ID("INCL"), file);
+        fwrite(dict_name, 1, strlen(dict_name), (FILE *) file);
+        mdjvu_iff_close_chunk(INCL, file);
+    }
 
-        Sjbz = mdjvu_iff_write_chunk(MDJVU_IFF_ID("Sjbz"), file);
-            if (!mdjvu_file_save_jb2(image, file, perr, erosion)) return 0;
-        mdjvu_iff_close_chunk(Sjbz, file);
+    Sjbz = mdjvu_iff_write_chunk(MDJVU_IFF_ID("Sjbz"), file);
+    if (!mdjvu_file_save_jb2(image, file, perr, erosion)) return 0;
+    mdjvu_iff_close_chunk(Sjbz, file);
     mdjvu_iff_close_chunk(FORM, file);
 
     pos = ftell((FILE *) file) - pos;

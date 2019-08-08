@@ -468,50 +468,55 @@ static const char *strip_dir(const char *path)
 
 static void multipage_encode(int n, char **pages, char *outname, uint32 multipage_tiff)
 {
-    int el = 0;
-    int ndicts = (pages_per_dict <= 0)? 1 : 
+    int ndicts = (pages_per_dict <= 0)? 1 :
                                         (n % pages_per_dict > 0) ?  (int) fabs(n/pages_per_dict) + 1:
                                                                     (int) fabs(n/pages_per_dict);
-    char *dict_name, *path;
-    char **elements = MDJVU_MALLOCV(char *, n + ndicts);
-    int  *sizes     = MDJVU_MALLOCV(int, n + ndicts);
+    const int el_size = n + ndicts;
+    char **elements = MDJVU_MALLOCV(char *, el_size);
+    int  *sizes     = MDJVU_MALLOCV(int, el_size);
     mdjvu_compression_options_t options;
     mdjvu_error_t error;
 
-    FILE *f, *tf=NULL;
+    FILE *f;
+    FILE ** tfs = MDJVU_MALLOCV(FILE *, ndicts);
 #ifdef _WIN32
-	char tempfilename[MAX_PATH+1];
+    char* tempfilenames = (char*) MDJVU_MALLOC(ndicts*(MAX_PATH+1));
+    memset(tempfilenames, 0, ndicts*(MAX_PATH+1));
 #endif
 
     match = 1;
 
-    if (!decide_if_djvu(outname))
-    {
+    if (!decide_if_djvu(outname)) {
         fprintf(stderr, _("when encoding many pages, output file must be DjVu\n"));
         exit(1);
     }
-    if (!indirect)
-    {
-#ifndef _WIN32
-        tf = tmpfile();
-#else
-		char pathname[MAX_PATH+1];
-		if (GetTempPathA(MAX_PATH+1, pathname) == 0) {
-			fprintf(stderr, _("Could not create a temporary file. (GetTempPathA)\n"));
-			exit(1);
-		}
 
-		char prefix[4] = {'d', 'j', 'v', 0 };
-		if (GetTempFileNameA(pathname, prefix, 0, tempfilename ) == 0) {
-			fprintf(stderr, _("Could not create a temporary file. (GetTempFileNameA)\n"));
-			exit(1);
-		}
-                tf = fopen(tempfilename, "w+b");
-#endif
-        if (!tf)
-        {
-            fprintf(stderr, _("Could not create a temporary file\n"));
+    if (!indirect) {
+#ifdef _WIN32
+        char pathname[MAX_PATH+1];
+        if (GetTempPathA(MAX_PATH+1, pathname) == 0) {
+            fprintf(stderr, _("Could not create a temporary file. (GetTempPathA)\n"));
             exit(1);
+        }
+        char prefix[4] = {'d', 'j', 'v', 0 };
+#endif
+
+        for (int i = 0; i < ndicts; i++) {
+#ifndef _WIN32
+            tfs[i] = tmpfile();
+#else
+            char* tempfilename = tempfilenames + i*(MAX_PATH+1);
+            if (GetTempFileNameA(pathname, prefix, 0, tempfilename) == 0) {
+                fprintf(stderr, _("Could not create a temporary file. (GetTempFileNameA)\n"));
+                exit(1);
+            }
+            tfs[i] = fopen(tempfilename, "w+b");
+#endif
+            if (!tfs[i])
+            {
+                fprintf(stderr, _("Could not create a temporary file\n"));
+                exit(1);
+            }
         }
     }
 
@@ -544,15 +549,33 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     }
 #endif
 
-int block;
-// no need to check _OPENMP as unsupported pragmas are ignored
-#pragma omp parallel for ordered schedule(static, 1) shared(options, elements, sizes, f, tf, error, pages, outname, el)
+    // initialize elements with filenames as it can't be done in parallel blocks without critical sections
+    int el = 0;
+    for (int j = 0; j < ndicts; j++) {
+        const int32 pages_compressed = j*pages_per_dict;
+        const int32 pages_to_compress = pages_compressed + pages_per_dict > n ? n - pages_compressed : pages_per_dict;
+
+        char * path = get_page_or_dict_name(elements, el, strip_dir(pages[multipage_tiff ? 0 : pages_compressed]));
+        char * dict_name = MDJVU_MALLOCV(char, strlen(path) + strlen(dict_suffix) - 2);
+        strcpy(dict_name, path);
+        replace_suffix(dict_name, dict_suffix);
+        elements[el++] = dict_name;
+        for (int i = 0; i < pages_to_compress; i++)
+        {
+            if (i > 0) {
+                path = get_page_or_dict_name(elements, el, strip_dir(pages[multipage_tiff ? 0 : pages_compressed + i]));
+            }
+            elements[el++] = path;
+        }
+    }
+
+    int block;
+#pragma omp parallel for schedule(static, 1) // no need to check _OPENMP as unsupported pragmas are ignored
     for (block = 0; block < ndicts; block++) {
         mdjvu_image_t *images = MDJVU_MALLOCV(mdjvu_image_t, pages_per_dict);
         int32 pages_compressed = block*pages_per_dict;
-
-
         int32 pages_to_compress = pages_compressed + pages_per_dict > n ? n - pages_compressed : pages_per_dict;
+        int el = pages_compressed + block;
 
         mdjvu_set_report_start_page(options, pages_compressed + 1);
 
@@ -571,59 +594,45 @@ int block;
 
         mdjvu_image_t dict = mdjvu_compress_multipage(pages_to_compress, images, options);
 
-#pragma omp ordered
-        {
+        const char * dict_name = elements[el];
+        if (!indirect)
+            sizes[el] = mdjvu_file_save_djvu_dictionary(dict, (mdjvu_file_t) tfs[block], 0, &error, erosion);
+        else
+            sizes[el] = mdjvu_save_djvu_dictionary(dict, dict_name, &error, erosion);
 
-            path = get_page_or_dict_name(elements, el, strip_dir(pages[multipage_tiff ? 0 : pages_compressed]));
-            dict_name = MDJVU_MALLOCV(char, strlen(path) + strlen(dict_suffix) - 2);
-            strcpy(dict_name, path);
-            replace_suffix(dict_name, dict_suffix);
+        if (!sizes[el])
+        {
+            fprintf(stderr, "%s: %s\n", dict_name, mdjvu_get_error_message(error));
+            exit(1);
+        }
+
+        el++;
+
+        for (int i = 0; i < pages_to_compress; i++, el++)
+        {
+            const char * path = elements[el];
+
+            if (verbose)
+                printf(_("saving page #%d into %s using dictionary %s\n"), pages_compressed + i + 1, path, dict_name);
 
             if (!indirect)
-                sizes[el] = mdjvu_file_save_djvu_dictionary(dict, (mdjvu_file_t) tf, 0, &error, erosion);
+                sizes[el] = mdjvu_file_save_djvu_page(images[i], (mdjvu_file_t) tfs[block], strip_dir(dict_name), 0, &error, erosion);
             else
-                sizes[el] = mdjvu_save_djvu_dictionary(dict, dict_name, &error, erosion);
-
+                sizes[el] = mdjvu_save_djvu_page(images[i], path, strip_dir(dict_name), &error, erosion);
             if (!sizes[el])
             {
-                fprintf(stderr, "%s: %s\n", dict_name, mdjvu_get_error_message(error));
+                fprintf(stderr, "%s: %s\n", path, mdjvu_get_error_message(error));
                 exit(1);
             }
-            elements[el] = dict_name;
-#pragma omp atomic
-            el++;
 
-
-            for (int i = 0; i < pages_to_compress; i++)
-            {
-                if (i > 0)
-                    path = get_page_or_dict_name(elements, el, strip_dir(pages[multipage_tiff ? 0 : pages_compressed + i]));
-
-                if (verbose)
-                    printf(_("saving page #%d into %s using dictionary %s\n"), pages_compressed + i + 1, path, dict_name);
-
-                if (!indirect)
-                    sizes[el] = mdjvu_file_save_djvu_page(images[i], (mdjvu_file_t) tf, strip_dir(dict_name), 0, &error, erosion);
-                else
-                    sizes[el] = mdjvu_save_djvu_page(images[i], path, strip_dir(dict_name), &error, erosion);
-                if (!sizes[el])
-                {
-                    fprintf(stderr, "%s: %s\n", path, mdjvu_get_error_message(error));
-                    exit(1);
-                }
-
-                elements[el] = path;
-#pragma omp atomic
-                el++;
-                mdjvu_image_destroy(images[i]);
-                if (report)
-                    printf(_("Saving: %d of %d completed\n"), pages_compressed + i + 1, n);
-            }
-            mdjvu_image_destroy(dict);
-            //        pages_compressed += pages_to_compress;
-            MDJVU_FREEV(images);
-        } // #pragma omp ordered
-    }
+            mdjvu_image_destroy(images[i]);
+            if (report)
+                printf(_("Saving: %d of %d completed\n"), pages_compressed + i + 1, n);
+        }
+        mdjvu_image_destroy(dict);
+        //        pages_compressed += pages_to_compress;
+        MDJVU_FREEV(images);
+    } //  #pragma omp parallel
 
     if (!indirect)
     {
@@ -633,17 +642,24 @@ int block;
             fprintf(stderr, "%s: %s\n", outname, (const char *) mdjvu_get_error(mdjvu_error_fopen_write));
             exit(1);
         }
-        mdjvu_file_save_djvu_dir(elements, sizes, el, (mdjvu_file_t) f, (mdjvu_file_t) tf, &error);
-        fclose(tf);
+        mdjvu_files_save_djvu_dir(elements, sizes, el_size, (mdjvu_file_t) f, (mdjvu_file_t*) tfs, ndicts, &error);
+        for (int i = 0; i < ndicts; i++) {
+            fclose(tfs[i]);
 #ifdef _WIN32
-		remove(tempfilename);
+            char* tempfilename = tempfilenames + i*(MAX_PATH+1);
+            remove(tempfilename);
+#endif
+        }
+        MDJVU_FREEV(tfs);
+#ifdef _WIN32
+        MDJVU_FREE(tempfilenames);
 #endif
         fclose(f);
     }
     else
-        mdjvu_save_djvu_dir(elements,sizes,el,outname,&error);
-    
-    for (int i=0; i<el; i++) MDJVU_FREEV(elements[i]);
+        mdjvu_save_djvu_dir(elements, sizes, el_size, outname, &error);
+
+    for (int i=0; i < el_size; i++) MDJVU_FREEV(elements[i]);
     MDJVU_FREEV(elements);
     MDJVU_FREEV(sizes);
 

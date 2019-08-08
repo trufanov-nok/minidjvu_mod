@@ -20,6 +20,8 @@ MDJVU_FUNCTION mdjvu_image_t mdjvu_load_djvu_page(const char *path, mdjvu_error_
  * 1 - success, 0 - failure
  * After mdjvu_file_save_djvu_page() the file cursor is before the JB2 chunk.
  */
+MDJVU_FUNCTION int mdjvu_files_save_djvu_dir(char **elements, int *sizes, int n,
+                                             mdjvu_file_t file, mdjvu_file_t* tempfiles, int num_tempfiles, mdjvu_error_t *perr);
 MDJVU_FUNCTION int mdjvu_file_save_djvu_dir( char **elements, int *sizes, int n,
                                              mdjvu_file_t file, mdjvu_file_t tmpfile, mdjvu_error_t *perr);
 MDJVU_FUNCTION int mdjvu_save_djvu_dir(char **elements, int *sizes, int n, const char *path, mdjvu_error_t *perr);
