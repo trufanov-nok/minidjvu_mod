@@ -366,10 +366,19 @@ MDJVU_FUNCTION mdjvu_image_t mdjvu_compress_multipage(int n, mdjvu_image_t *page
     mdjvu_multipage_adjust(dictionary, n, pages);
     for (i = 0; i < n; i++)
         mdjvu_image_remove_unused_bitmaps(pages[i]);
-    if (options->report) printf(_("started prototype search\n"));
-    mdjvu_multipage_find_prototypes(dictionary, n, pages,
-                                    report_prototypes, options);
-    if (options->report) printf(_("finished prototype search\n"));
+
+    if (options->no_prototypes) {
+        for (i = 0; i < n; i++) {
+            // it seems this required to suppress prototype search for local sjbz later
+            mdjvu_image_enable_prototypes(pages[i]);
+        }
+    } else {
+        if (options->report) printf(_("started prototype search\n"));
+        mdjvu_multipage_find_prototypes(dictionary, n, pages,
+                                        report_prototypes, options);
+        if (options->report) printf(_("finished prototype search\n"));
+    }
+
     free(dictionary_flags);
     free(representatives);
     MDJVU_FREEV(tags);
