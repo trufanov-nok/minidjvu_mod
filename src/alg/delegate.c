@@ -13,7 +13,8 @@ MDJVU_IMPLEMENT void mdjvu_multipage_choose_representatives
          mdjvu_image_t *pages,
          int32 max_tag,
          int32 *tags,
-         mdjvu_bitmap_t *representatives)
+         mdjvu_bitmap_t *representatives,
+         unsigned char *dictionary_flags)
 {
     int page_number;
     int32 total_bitmaps_passed = 0;
@@ -27,7 +28,7 @@ MDJVU_IMPLEMENT void mdjvu_multipage_choose_representatives
         for (i = 0; i < bitmap_count; i++)
         {
             int32 tag = tags[total_bitmaps_passed++];
-            if (!tag) continue; /* skip non-substitutable bitmaps */
+            if (!tag || !dictionary_flags[tag]) continue; /* skip non-substitutable bitmaps */
             if (!representatives[tag])
                 representatives[tag] = mdjvu_image_get_bitmap(page, i);
         }

@@ -222,16 +222,15 @@ MDJVU_IMPLEMENT void mdjvu_compress_image(mdjvu_image_t image, mdjvu_compression
  */
 
 static mdjvu_image_t get_dictionary(int32 max_tag,
-                                    mdjvu_bitmap_t *representatives,
-                                    unsigned char *dictionary_flags)
+                                    mdjvu_bitmap_t *representatives)
 {
     mdjvu_image_t dictionary = mdjvu_image_create(0,0); /* 0 x 0 image */
     int32 tag;
     for (tag = 1; tag <= max_tag; tag++)
     {
-        mdjvu_bitmap_t clone;
-        if (!dictionary_flags[tag]) continue;
-        clone = mdjvu_bitmap_clone(representatives[tag]);
+        mdjvu_bitmap_t rep;
+        if ((rep = representatives[tag]) == NULL) continue;
+        mdjvu_bitmap_t clone = mdjvu_bitmap_clone(rep);
         representatives[tag] = clone;
         mdjvu_image_add_bitmap(dictionary, clone);
     }
@@ -351,8 +350,8 @@ MDJVU_FUNCTION mdjvu_image_t mdjvu_compress_multipage(int n, mdjvu_image_t *page
 
     if (!options->averaging)
     {
-        mdjvu_multipage_choose_representatives(n, pages, max_tag, tags, representatives);
-        dictionary = get_dictionary(max_tag, representatives, dictionary_flags);
+        mdjvu_multipage_choose_representatives(n, pages, max_tag, tags, representatives, dictionary_flags);
+        dictionary = get_dictionary(max_tag, representatives);
 
     }
     else
