@@ -480,7 +480,7 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     FILE *f;
     FILE ** tfs = MDJVU_MALLOCV(FILE *, ndicts);
 #ifdef _WIN32
-    char* tempfilenames = (char*) MDJVU_MALLOC(ndicts*(MAX_PATH+1));
+    char* tempfilenames = (char*) MDJVU_MALLOCV(char, ndicts*(MAX_PATH+1));
     memset(tempfilenames, 0, ndicts*(MAX_PATH+1));
 #endif
 
@@ -652,7 +652,7 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
         }
         MDJVU_FREEV(tfs);
 #ifdef _WIN32
-        MDJVU_FREE(tempfilenames);
+        MDJVU_FREEV(tempfilenames);
 #endif
         fclose(f);
     }
