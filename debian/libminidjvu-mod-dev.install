@@ -1,0 +1,4 @@
+usr/lib/*/libminidjvu-mod.a
+usr/lib/*/libminidjvu-mod.so
+usr/include
+usr/lib/*/pkgconfig/*.pc

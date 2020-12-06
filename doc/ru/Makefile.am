@@ -1,2 +1,2 @@
 mandir = @mandir@/ru
-dist_man_MANS = minidjvu.1
+dist_man_MANS = minidjvu-mod.1

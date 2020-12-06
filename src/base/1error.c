@@ -3,7 +3,7 @@
  */
 
 #include "../base/mdjvucfg.h"
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 
 MDJVU_IMPLEMENT const char *mdjvu_get_error_message(mdjvu_error_t error)
 {
@@ -37,10 +37,10 @@ MDJVU_IMPLEMENT mdjvu_error_t mdjvu_get_error(MinidjvuErrorType e)
         case mdjvu_error_recursive_prototypes:
             return (mdjvu_error_t) _("somehow prototype references recursed");
         case mdjvu_error_tiff_support_disabled:
-            return (mdjvu_error_t) _("minidjvu was compiled without TIFF support");
+            return (mdjvu_error_t) _("minidjvu-mod was compiled without TIFF support");
         case mdjvu_error_png_support_disabled:
-            return (mdjvu_error_t) _("minidjvu was compiled without PNG support");
+            return (mdjvu_error_t) _("minidjvu-mod was compiled without PNG support");
     }
     return (mdjvu_error_t)
-        _("some weird error happened, probably caused by a bug in minidjvu");
+        _("some weird error happened, probably caused by a bug in minidjvu-mod");
 }

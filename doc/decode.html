@@ -1,5 +1,5 @@
 <HTML>
-<H1>minidjvu: how to decode a DjVu page</H1>
+<H1>minidjvu-mod: how to decode a DjVu page</H1>
 
 This file describes minidjvu 0.3 library;
 this is also fully applicable to 0.33 version.
@@ -9,11 +9,11 @@ The library interface is <B>unstable</B>.
 See also: <a href="encode.html">how to compress a DjVu file</a>
 <HR>
 <H3>Step 0: get things working</H3>
-Add this include line to you source files that use minidjvu:
+Add this include line to you source files that use minidjvu-mod:
 <PRE>
-    #include &lt;minidjvu.h&gt;
+    #include &lt;minidjvu-mod.h&gt;
 </PRE>
-I'll assume that your compiler can find the minidjvu headers
+I'll assume that your compiler can find the minidjvu-mod headers
 and your linker can link against the library. If not, try to read INSTALL
 or README, or try to add the parent release directory into the header search path.
 <P>
@@ -49,7 +49,7 @@ does this:
 </PRE>
 <HR>
 <H3>Step 3: save the bitmap</H3>
-You can save your bitmap into one of bitmap formats supported by minidjvu:
+You can save your bitmap into one of bitmap formats supported by minidjvu-mod:
 PBM and Windows BMP. In any case, an output file will be rewritten if it
 exists. That's how to save a PBM:
 <PRE>
@@ -72,7 +72,7 @@ Doing it with BMPs is pretty similar:
     }
 </PRE>
 With TIFF, you can just call <I>mdjvu_save_tiff()</I>, but it's a good idea
-to check first whether TIFF support is compiled into minidjvu by calling
+to check first whether TIFF support is compiled into minidjvu-mod by calling
 <PRE>
     int have_tiff = mdjvu_have_tiff_support();
 </PRE>

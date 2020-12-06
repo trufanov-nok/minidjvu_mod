@@ -5,7 +5,7 @@
 typedef struct MinidjvuCompressionOptions *mdjvu_compression_options_t;
 
 /*
- * By default, options correspond to `minidjvu' run with no options.
+ * By default, options correspond to `minidjvu-mod' run with no options.
  * That is, lossless encoding and not verbose.
  */
 MDJVU_FUNCTION mdjvu_compression_options_t mdjvu_compression_options_create(void);

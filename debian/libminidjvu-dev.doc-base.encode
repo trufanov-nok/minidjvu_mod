@@ -1,9 +1,0 @@
-Document: minidjvu-encode
-Title: minidjvu: how to compress into DjVu
-Author: Ilya Mezhirov
-Abstract:  How to use minidjvu to compress into the DjVu format
-Section: Graphics
-
-Format: HTML
-Index: /usr/share/doc/libminidjvu-dev/encode.html
-Files: /usr/share/doc/libminidjvu-dev/encode.html

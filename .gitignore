@@ -21,8 +21,8 @@
 /configure
 /libtool
 /m4/*.m4
-/minidjvu
-/minidjvu.pc
+/minidjvu-mod
+/minidjvu-mod.pc
 /po/Makefile.in.in
 /po/Makevars.template
 /po/POTFILES
@@ -31,7 +31,7 @@
 /po/en@boldquot.header
 /po/en@quot.header
 /po/insert-header.sin
-/po/minidjvu.pot
+/po/minidjvu-mod.pot
 /po/quot.sed
 /po/remove-potcdate.sed
 /po/remove-potcdate.sin

@@ -26,14 +26,14 @@
 
 #ifdef __cplusplus
 /* Stuff for not using malloc in C++
- * (made by Leon Bottou; has no use in minidjvu,
+ * (made by Leon Bottou; has no use in minidjvu-mod,
  * but left here for potential DjVuLibre compatibility)
  */
 # define MALLOC1(Type)    new Type
 # define FREE1(p)         delete (p)
 # define MALLOC(Type,n)   new Type[n]
 # define FREE(p)          delete [] (p)
-# define REALLOC          oops! I hope we have no REALLOC in minidjvu...
+# define REALLOC          oops! I hope we have no REALLOC in minidjvu-mod...
 #else
 # define MALLOC1(TYPE)           ( (TYPE *) malloc(sizeof(TYPE)) )
 # define MALLOC(TYPE, N)         ( (TYPE *) malloc((N) * sizeof(TYPE)) )

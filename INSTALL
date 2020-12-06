@@ -7,7 +7,7 @@ Run:
  ./configure
  make
  make install
-Will install minidjvu executable into /usr/local/bin/, as well as
+Will install minidjvu-mod executable into /usr/local/bin/, as well as
 various support files, documentation, development files, etc.
 
 
@@ -30,7 +30,7 @@ If you want to compile it all manually, read this.
 The release directory should be treated as an include directory
 (usually -I or /I option). That applies both to the library and the program.
 
-The library is built from sources in `minidjvu' subdirectory.
+The library is built from sources in `minidjvu-mod' subdirectory.
 The program is built from sources in `src' subdirectory.
 
 To enable TIFF support, define HAVE_LIBTIFF to 1, add libtiff include directory
@@ -43,14 +43,14 @@ _________
 
 Under Linux, you can always try something like
 
-    g++ -Iinclude `find -name "*.c*"` -O2 -o minidjvu
+    g++ -Iinclude `find -name "*.c*"` -O2 -o minidjvu-mod
     
 or, if you want TIFF support,
 
-    g++ -DHAVE_LIBTIFF=1 -Iinclude `find -name "*.c*"` -O2 -ltiff -o minidjvu
+    g++ -DHAVE_LIBTIFF=1 -Iinclude `find -name "*.c*"` -O2 -ltiff -o minidjvu-mod
 
 Under MSVC, watch for those __declspec directives in
-`minidjvu/base/0porting/0porting.h' - if you wish a DLL, turn them on.
+`minidjvu-mod/base/0porting/0porting.h' - if you wish a DLL, turn them on.
 
 
 
@@ -64,7 +64,7 @@ really useful if they can't handle the Mac stuff?).
  * Apparently, there are some problems with Macs, but I don't know why.
  */
 
-After some tries I got minidjvu built and running on mac os X panther.
+After some tries I got minidjvu-mod built and running on mac os X panther.
 I had to make this:
 
 1. setup:
@@ -84,5 +84,5 @@ make
 PORTING
 _______
 
-Browse through `minidjvu/base/0porting.h' to see if it needs changing.
+Browse through `minidjvu-mod/base/0porting.h' to see if it needs changing.
 What next, I don't know :)

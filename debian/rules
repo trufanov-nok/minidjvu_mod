@@ -1,23 +1,7 @@
 #!/usr/bin/make -f
 
-export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DH_VERBOSE=1
 
 %:
 	dh $@
 
-# Snippet from http://wiki.debian.org/UnpackWaf with +dfsg1 changed to +dfsg
-# get-orig-source to drop waf
-upstream_version ?= $(shell dpkg-parsechangelog | sed -rne 's/^Version: ([0-9.]+)(\+dfsg\d+)?.*$$/\1/p')
-dfsg_version = $(upstream_version)+dfsg
-pkg = $(shell dpkg-parsechangelog | sed -ne 's/^Source: //p')
-
-get-orig-source:
-	uscan --noconf --force-download --rename --repack --download-current-version --destdir=.
-	tar -xzf $(pkg)_$(upstream_version).orig.tar.gz
-	mv $(pkg)-$(upstream_version) $(pkg)-$(dfsg_version)
-	cd $(pkg)-$(dfsg_version) ; python waf --help > /dev/null
-	mv $(pkg)-$(dfsg_version)/.waf-*/* $(pkg)-$(dfsg_version)
-	sed -i '/^#==>$$/,$$d' $(pkg)-$(dfsg_version)/waf
-	rmdir $(pkg)-$(dfsg_version)/.waf-*
-	GZIP="-9fn" tar -czf $(pkg)_$(dfsg_version).orig.tar.gz $(pkg)-$(dfsg_version)
-	rm -rf $(pkg)-$(dfsg_version)

@@ -8,7 +8,7 @@
  */
 
 #include "../base/mdjvucfg.h"
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include "bitmaps.h"
 #include <stdlib.h>
 #include <stdio.h>

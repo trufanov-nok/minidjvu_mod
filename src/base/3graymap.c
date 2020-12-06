@@ -3,7 +3,7 @@
  */
 
 #include "mdjvucfg.h"
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include <stdlib.h>
 
 MDJVU_IMPLEMENT unsigned char **mdjvu_create_2d_array(int32 w, int32 h)

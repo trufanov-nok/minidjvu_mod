@@ -3,7 +3,7 @@
  */
 
 #include "../base/mdjvucfg.h"
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include <stdio.h>
 
 static void skip_to_the_end_of_line(FILE *file)

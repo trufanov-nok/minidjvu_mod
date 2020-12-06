@@ -3,8 +3,8 @@
  */
 
 
-/* Under Windows there is no libc. So it may well occur that minidjvu uses one
- * stdio implementation, and an application linked against minidjvu uses another.
+/* Under Windows there is no libc. So it may well occur that minidjvu-mod uses one
+ * stdio implementation, and an application linked against minidjvu-mod uses another.
  * In that case we can't exchange (FILE *) pointers reliably. So here is a simple
  * stdio wrapper to allow applications invoke our stdio.
  * 
@@ -13,7 +13,7 @@
 
 
 /* Structure MinidjvuFile is never defined.
- * Inside the minidjvu library, mdjvu_file_t is FILE *.
+ * Inside the minidjvu-mod library, mdjvu_file_t is FILE *.
  */
 typedef struct MinidjvuFile *mdjvu_file_t;
 

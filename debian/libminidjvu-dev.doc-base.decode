@@ -1,9 +1,0 @@
-Document: minidjvu-decode
-Title: minidjvu: how to decode a DjVu page
-Author: Ilya Mezhirov
-Abstract:  How to use minidjvu to decode a page in DjVu format
-Section: Graphics
-
-Format: HTML
-Index: /usr/share/doc/libminidjvu-dev/decode.html
-Files: /usr/share/doc/libminidjvu-dev/decode.html
