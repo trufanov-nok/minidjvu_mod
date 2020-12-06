@@ -18,9 +18,9 @@ AM_CXXFLAGS = $(WARNFLAGS)
 localedir = $(datadir)/locale
 DEFS = -DLOCALEDIR=\"$(localedir)\" @DEFS@
 
-lib_LTLIBRARIES = libminidjvu.la
+lib_LTLIBRARIES = libminidjvu-mod.la
 
-libminidjvu_la_SOURCES = src/matcher/no_mdjvu.h src/matcher/bitmaps.h	\
+libminidjvu_mod_la_SOURCES = src/matcher/no_mdjvu.h src/matcher/bitmaps.h	\
  src/matcher/common.h src/djvu/bs.h src/jb2/jb2coder.h			\
  src/jb2/bmpcoder.h src/jb2/zp.h src/jb2/jb2const.h			\
  src/base/mdjvucfg.h src/matcher/cuts.c src/matcher/patterns.c		\
@@ -38,13 +38,13 @@ libminidjvu_la_SOURCES = src/matcher/no_mdjvu.h src/matcher/bitmaps.h	\
  src/djvu/bs.cpp src/jb2/jb2coder.cpp src/jb2/bmpcoder.cpp		\
  src/jb2/jb2load.cpp src/jb2/zp.cpp src/jb2/jb2save.cpp
 
-bin_PROGRAMS = minidjvu
+bin_PROGRAMS = minidjvu-mod
 
-minidjvu_SOURCES = tools/minidjvu.c
+minidjvu_mod_SOURCES = tools/minidjvu-mod.c
 
-minidjvu_LDADD = libminidjvu.la
+minidjvu_mod_LDADD = libminidjvu-mod.la
 
-minidjvu.pc:
+minidjvu-mod.pc:
 	echo 'prefix=$(prefix)'			>  $@
 	echo 'exec_prefix=$(exec_prefix)'	>> $@
 	echo 'includedir=$(includedir)'		>> $@
@@ -55,9 +55,10 @@ minidjvu.pc:
 	echo 'URL: $(PACKAGE_URL)'		>> $@
 	echo 'Version: $(PACKAGE_VERSION)'	>> $@
 	echo 'Cflags: -I$(includedir)'		>> $@
-	echo 'Libs: -L$(libdir) -lminidjvu'	>> $@
+	echo 'Libs: -L$(libdir) -lminidjvu-mod'	>> $@
 	echo 'Libs.private: $(LDFLAGS) $(LIBS)'	>> $@
 
-pkgconfig_DATA = minidjvu.pc
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = minidjvu-mod.pc
 
 MOSTLYCLEANFILES = $(pkgconfig_DATA)

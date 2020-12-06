@@ -11,7 +11,7 @@
 #define ZP_H
 
 
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include <stdio.h>
 #include <assert.h>
 

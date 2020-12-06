@@ -4,7 +4,7 @@
 
 
 #include "../base/mdjvucfg.h"
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

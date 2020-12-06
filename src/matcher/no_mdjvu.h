@@ -1,13 +1,13 @@
 /*
- * no_mdjvu.h - stuff for compiling the pattern matcher outside of minidjvu
+ * no_mdjvu.h - stuff for compiling the pattern matcher outside of minidjvu-mod
  */
 
 
 /*
- * to compile the pattern matcher without the rest of minidjvu,
+ * to compile the pattern matcher without the rest of minidjvu-mod,
  * do this:
  *
- *  mv no_mdjvu.h minidjvu.h
+ *  mv no_mdjvu.h minidjvu-mod.h
  *  touch mdjvucfg.h
  *  g++ -c *.cpp
  */

@@ -1,9 +1,9 @@
 <!-- vim: ft=html
- This is the minimalistic GUI wrapper for minidjvu.
+ This is the minimalistic GUI wrapper for minidjvu-mod.
  .hta extension allows it to run under Windows as an application.
 -->
 
-<HTML><HEAD><TITLE>TIFF to DjVu (minidjvu 0.8)</TITLE>
+<HTML><HEAD><TITLE>TIFF to DjVu (minidjvu-mod 0.9m01)</TITLE>
 <SCRIPT>
 
 var shell = new ActiveXObject("WScript.Shell");
@@ -96,7 +96,7 @@ function update()
     else
         input = inputfile.value;
 
-    // minidjvu
+    // minidjvu-mod
 
     options = " --report"; // Useful only in multipage mode, but doesn't harm anyway
 
@@ -114,7 +114,7 @@ function update()
 
     mdjvuOutput = getOutputPath(ourDir);
     
-    job.value = "minidjvu.exe" + options + " " + input + " " + mdjvuOutput + "\n";
+    job.value = "minidjvu-mod.exe" + options + " " + input + " " + mdjvuOutput + "\n";
 }
 
 function onRun()

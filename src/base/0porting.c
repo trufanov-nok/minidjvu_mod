@@ -3,7 +3,7 @@
  */
 
 #include "../base/mdjvucfg.h"
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -39,7 +39,7 @@ void mdjvu_init(void)
         return;
 
     #ifdef HAVE_GETTEXT
-        bindtextdomain("minidjvu", LOCALEDIR);
+        bindtextdomain("minidjvu-mod", LOCALEDIR);
     #endif
 
     /* check sizeof(int32) == 4 and such gibberish */

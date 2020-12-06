@@ -1,14 +1,14 @@
 !include "MUI.nsh"
 
   ;Name and file
-  Name "Minidjvu 0.8"
-  OutFile "minidjvu-0.8.exe"
+  Name "Minidjvu 0.9m01"
+  OutFile "minidjvu-mod-0.9m01.exe"
 
   ;Default installation folder
-  InstallDir "$PROGRAMFILES\minidjvu"
+  InstallDir "$PROGRAMFILES\minidjvu-mod"
   
   ;Get installation folder from registry if available
-  InstallDirRegKey HKCU "Software\minidjvu" ""
+  InstallDirRegKey HKCU "Software\minidjvu-mod" ""
 
 
 ;--------------------------------
@@ -56,22 +56,22 @@ Section "Install"
   Delete "$INSTDIR\windjview.exe"
   Delete "$INSTDIR\zlib1.dll"
   Delete "$INSTDIR\README.html"
-  Delete "$SMPROGRAMS\minidjvu\README.lnk"
-  Delete "$INSTDIR\minidjvu.nsi"
+  Delete "$SMPROGRAMS\minidjvu-mod\README.lnk"
+  Delete "$INSTDIR\minidjvu-mod.nsi"
   
   File "COPYING"
   File "News"
-  File "bin\minidjvu.exe"
+  File "bin\minidjvu-mod.exe"
   File "tifftodjvu.hta"
   CreateDirectory $INSTDIR\doc
   File "/oname=doc\tifftodjvu_help.html" "doc\tifftodjvu_help.html"
 
-  CreateDirectory $SMPROGRAMS\minidjvu
-  CreateShortcut  $SMPROGRAMS\minidjvu\TIFF-to-DjVu.lnk $INSTDIR\tifftodjvu.hta
-  CreateShortcut  $SMPROGRAMS\minidjvu\Uninstall.lnk $INSTDIR\Uninstall.exe
+  CreateDirectory $SMPROGRAMS\minidjvu-mod
+  CreateShortcut  $SMPROGRAMS\minidjvu-mod\TIFF-to-DjVu.lnk $INSTDIR\tifftodjvu.hta
+  CreateShortcut  $SMPROGRAMS\minidjvu-mod\Uninstall.lnk $INSTDIR\Uninstall.exe
 
   ;Store installation folder
-  WriteRegStr HKCU "Software\minidjvu" "" $INSTDIR
+  WriteRegStr HKCU "Software\minidjvu-mod" "" $INSTDIR
   
   ;Create uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -83,7 +83,7 @@ SectionEnd
 Section "Uninstall"
 
   Delete "$INSTDIR\COPYING"
-  Delete "$INSTDIR\minidjvu.exe"
+  Delete "$INSTDIR\minidjvu-mod.exe"
   Delete "$INSTDIR\tifftodjvu.hta"
   Delete "$INSTDIR\doc\tifftodjvu_help.html"
 
@@ -92,9 +92,9 @@ Section "Uninstall"
   RMDir "$INSTDIR\doc"
   RMDir "$INSTDIR"
 
-  Delete "$SMPROGRAMS\minidjvu\TIFF-to-DjVu.lnk"
-  Delete "$SMPROGRAMS\minidjvu\Uninstall.lnk"
-  RMDir  "$SMPROGRAMS\minidjvu"
+  Delete "$SMPROGRAMS\minidjvu-mod\TIFF-to-DjVu.lnk"
+  Delete "$SMPROGRAMS\minidjvu-mod\Uninstall.lnk"
+  RMDir  "$SMPROGRAMS\minidjvu-mod"
 
-  DeleteRegKey /ifempty HKCU "Software\minidjvu"
+  DeleteRegKey /ifempty HKCU "Software\minidjvu-mod"
 SectionEnd

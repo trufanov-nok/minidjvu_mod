@@ -3,12 +3,12 @@
  */
 
 
-/* There's no special graymap type in minidjvu, and adding it is not planned.
+/* There's no special graymap type in minidjvu-mod, and adding it is not planned.
  * So, graymaps are stored in three variables: unsigned char **, int32 and int32
  * (data, width and height).
  * 
  * Overall, graymap support is poor: there is only create/destroy functions.
- * Since no algorithms in minidjvu use graymaps yet, there's no need to have more.
+ * Since no algorithms in minidjvu-mod use graymaps yet, there's no need to have more.
  */
 
 

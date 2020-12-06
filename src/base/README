@@ -1,4 +1,4 @@
-This is the `base' of minidjvu. All algorithms depend on the base.
+This is the `base' of minidjvu-mod. All algorithms depend on the base.
 
 The base units may depend on each other in the order suggested by the numbers.
 So, `0porting' does not depend on anything and `5image' may depend on all.
@@ -10,5 +10,5 @@ Here is the description of units:
     2io      - stdio wrapper (we can have many `stdio's on Windows)
     3graymap - small number of 2D-arrays handling routines
     4bitmap  - the bitmap class (useful in a bitmap-processing library, right?)
-    5image   - the "split" image class (that's what minidjvu is all about)
+    5image   - the "split" image class (that's what minidjvu-mod is all about)
     6string  - just one routine that should probably go elsewhere

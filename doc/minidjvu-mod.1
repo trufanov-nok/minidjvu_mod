@@ -20,28 +20,28 @@
 .\" License along with this manual. Otherwise check the web site
 .\" of the Free Software Foundation at http://www.fsf.org.
 .\" 
-.TH "MINIDJVU" "1" "July 2009" "minidjvu-0.8" "minidjvu-0.8"
+.TH "MINIDJVU-MOD" "6" "December 2019" "minidjvu-mod-0.9m01" "minidjvu-mod-0.9m01"
 .SH "NAME"
-minidjvu - encode/decode black-and-white DjVu pages
+minidjvu-mod - encode/decode black-and-white DjVu pages
 
 .SH "SYNOPSIS"
-.BI "minidjvu  [" "options" "] " "input_file" " " "output_file"
+.BI "minidjvu-mod  [" "options" "] " "input_file" " " "output_file"
 
 There is a similar syntax for multipage compression:
     
-.BI "minidjvu  [" "options" "] " "input_files" " " "output_file"
+.BI "minidjvu-mod  [" "options" "] " "input_files" " " "output_file"
 
 See
 .B "MULTIPAGE ENCODING" 
 section below for more details.
 
 .SH "DESCRIPTION"
-minidjvu encodes and decodes single-page black-and-white DjVu files.
+minidjvu-mod encodes and decodes single-page black-and-white DjVu files.
 
-minidjvu is derived from DjVuLibre, which is the primary support library
+minidjvu-mod is derived from DjVuLibre, which is the primary support library
 for DjVu.
 
-Besides bitonal DjVu, minidjvu understands Windows BMP, PBM and TIFF (through
+Besides bitonal DjVu, minidjvu-mod understands Windows BMP, PBM and TIFF (through
 libtiff) formats.
 Both
 .I inputfile
@@ -50,7 +50,7 @@ and
 may be BMP, PBM, TIFF or DjVu. The file type is determined by extension.
 Input and output may coincide.
 
-When given a DjVu-to-DjVu job, minidjvu decodes, then re-encodes the image.
+When given a DjVu-to-DjVu job, minidjvu-mod decodes, then re-encodes the image.
 DjVu layers other than bitonal picture are lost.
 
 Specifying a bitmap-to-bitmap job is possible, but relatively useful only with
@@ -58,12 +58,12 @@ Specifying a bitmap-to-bitmap job is possible, but relatively useful only with
 option.
 
 All options preceded by two hyphens can be used with one hyphen.
-This is done to make minidjvu interface more familiar for DjVuLibre users.
+This is done to make minidjvu-mod interface more familiar for DjVuLibre users.
 
 .SH "MULTIPAGE ENCODING"
 
 To activate the multipage mode either specify in your command line more than
-just one input file, or pass to minidjvu a single multipage tiff document. By default (if
+just one input file, or pass to minidjvu-mod a single multipage tiff document. By default (if
 .BR --indirect
 is not specified) the compressed pages are stored into a single bundled
 document under the name provided in the command line.
@@ -134,7 +134,7 @@ This option is turned on by
 .TP 
 .B "--indirect"
 
-Specifying this option in multipage mode causes minidjvu to generate an
+Specifying this option in multipage mode causes minidjvu-mod to generate an
 .I indirect
 multipage document, consisting from a single index file, several single-page
 DjVu files (one per each image passed to the encoder) and several shared
@@ -188,7 +188,7 @@ but produced files become much bigger.
 .B "--pages-per-dict"
 Specify how many pages to compress in one pass. The default is 10. If
 .BR "-p 0"
-is specified, minidjvu will attempt to process all pages at once, but be
+is specified, minidjvu-mod will attempt to process all pages at once, but be
 aware that this can take a lot of memory, especially on large books.
 
 .TP 
@@ -234,7 +234,7 @@ period). The default is "iff".
 Do not disable libtiff warnings. By default, TIFF warnings are suppressed.
 Under Windows default TIFF warning handler creates a message box.
 This is unacceptable in a batch processing script, for instance.
-So the minidjvu default behavior is a workaround for libtiff default behavior.
+So the minidjvu-mod default behavior is a workaround for libtiff default behavior.
 
 
 .SH BUGS

@@ -3,7 +3,7 @@
  */
 
 #include "../base/mdjvucfg.h"
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include "jb2coder.h"
 #include <stdlib.h>
 

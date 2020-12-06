@@ -1,8 +1,8 @@
 /*
- * minidjvu.c - an example of using the library
+ * minidjvu-mod.c - an example of using the library
  */
 
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include "../src/base/mdjvucfg.h" /* for i18n, HAVE_LIBTIFF */
 #include <stdlib.h>
 #include <stdio.h>
@@ -125,21 +125,21 @@ static void show_usage_and_exit(void)           /* {{{ */
     const char *what_it_does = _("encode/decode bitonal DjVu files");
     if (strcmp(MDJVU_VERSION, mdjvu_get_version()))
     {
-        printf(_("minidjvu - %s\n"), what_it_does);
+        printf(_("minidjvu-mod - %s\n"), what_it_does);
         printf(_("Warning: program and library version mismatch:\n"));
         printf(_("    program version %s, library version %s.\n\n"), MDJVU_VERSION, mdjvu_get_version());
 
     }
     else
     {
-        printf("minidjvu %s - %s\n", MDJVU_VERSION, what_it_does);
+        printf("minidjvu-mod %s - %s\n", MDJVU_VERSION, what_it_does);
 
     }
     printf(_("Usage:\n"));
     printf(_("single page encoding/decoding:\n"));
-    printf(_("    minidjvu [options] <input file> <output file>\n"));
+    printf(_("    minidjvu-mod [options] <input file> <output file>\n"));
     printf(_("multiple pages encoding:\n"));
-    printf(_("    minidjvu [options] <input file> ... <output file>\n"));
+    printf(_("    minidjvu-mod [options] <input file> ... <output file>\n"));
     printf(_("Formats supported:\n"));
 
     printf(_("    DjVu (single-page bitonal), PBM, Windows BMP"));
@@ -793,8 +793,8 @@ int main(int argc, char **argv)
 
     setlocale(LC_ALL, "");
 #ifdef HAVE_GETTEXT
-    bindtextdomain("minidjvu", LOCALEDIR);
-    textdomain("minidjvu");
+    bindtextdomain("minidjvu-mod", LOCALEDIR);
+    textdomain("minidjvu-mod");
 #endif
 
 

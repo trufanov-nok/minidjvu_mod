@@ -1,28 +1,28 @@
-Source: minidjvu
+Source: minidjvu-mod
 Section: graphics
 Priority: optional
-Maintainer: Barak A. Pearlmutter <bap@debian.org>
-Build-Depends: debhelper (>= 11),
-		dh-exec,
-		autopoint,
-		pkg-config,
-		libtiff-dev
-Homepage: http://minidjvu.sourceforge.net/
-Vcs-Git: https://salsa.debian.org/debian/minidjvu.git
-Vcs-Browser: https://salsa.debian.org/debian/minidjvu
+Maintainer: Alexander Trufanov <trufanovan@gmail.com>
+Build-Depends: debhelper (>= 9), dh-autoreconf,
+		libtiff-dev,
+		libz-dev,
+		libjpeg-dev,
+		libjemalloc-dev
+Homepage: https://github.com/trufanov-nok/minidjvu_mod
+#Vcs-Git: https://salsa.debian.org/debian/minidjvu-mod.git
+#Vcs-Browser: https://salsa.debian.org/debian/minidjvu-mod
 Standards-Version: 4.2.1
 
-Package: minidjvu
+Package: minidjvu-mod
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libminidjvu0 (>= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, libminidjvu-mod0 (>= ${binary:Version})
 Suggests: djview4 | djview3 | djvu-viewer, djvulibre-bin, pdf2djvu
 Description: Monochrome DjVu multipage encoder, single page encoder/decoder
  Minidjvu is a multipage DjVu encoder and single page encoder/decoder.
  No colors or grayscale, just black and white.
- In addition to the DjVu format, minidjvu reads and writes
+ In addition to the DjVu format, minidjvu-mod reads and writes
  PBM, Windows BMP, and TIFF.
 
-Package: libminidjvu0
+Package: libminidjvu-mod0
 Architecture: any
 Section: libs
 Pre-Depends: ${misc:Pre-Depends}
@@ -30,11 +30,11 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Small DjVu encoder/decoder, shared library
  MiniDjVu shared library, for DjVu format encoding and decoding.
 
-Package: libminidjvu-dev
+Package: libminidjvu-mod-dev
 Architecture: any
 Section: libdevel
-Depends: ${shlibs:Depends}, ${misc:Depends}, libminidjvu0 (= ${binary:Version})
-Suggests: minidjvu
+Depends: ${shlibs:Depends}, ${misc:Depends}, libminidjvu-mod0 (= ${binary:Version})
+Suggests: minidjvu-mod
 Description: Small DjVu encoder/decoder, development files
  MiniDjVu library development files, for DjVu format encoding and
  decoding.

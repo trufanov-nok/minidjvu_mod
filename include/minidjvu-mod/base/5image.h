@@ -1,5 +1,5 @@
 /*
- * 5image.h - manipulating split images, the main data structure of minidjvu
+ * 5image.h - manipulating split images, the main data structure of minidjvu-mod
  */
 
 typedef struct MinidjvuImage *mdjvu_image_t;
