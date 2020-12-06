@@ -4,7 +4,7 @@
 /autoreconf.after
 /autoreconf.before
 /files
-/libminidjvu-dev/
-/libminidjvu0/
-/minidjvu/
+/libminidjvu-mod-dev/
+/libminidjvu-mod0/
+/minidjvu-mod/
 /tmp/

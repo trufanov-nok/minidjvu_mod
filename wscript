@@ -2,7 +2,7 @@
 
 
 VERSION = '0.9'
-APPNAME = 'minidjvu'
+APPNAME = 'minidjvu-mod'
 
 srcdir = '.'
 blddir = 'build'
@@ -36,7 +36,7 @@ def build(bld):
     bld.new_task_gen(
         features = 'cc cxx cstaticlib', # cshlib
         source = bld.glob('src/*/*.c') + bld.glob('src/*/*.cpp'),
-        target = 'minidjvu',
+        target = 'minidjvu-mod',
         includes = '# include', # '#' is where config.h is generated
         install_path = '${PREFIX}/lib',
         uselib = 'M TIFF'
@@ -44,15 +44,15 @@ def build(bld):
     
     bld.new_task_gen(
         features = 'cc cxx cprogram',
-        source = 'tools/minidjvu.c',
-        target = 'minidjvu',
+        source = 'tools/minidjvu-mod.c',
+        target = 'minidjvu-mod',
         includes = '# include',
         install_path = '${PREFIX}/bin',
         uselib = 'M TIFF',
-        uselib_local = 'minidjvu'
+        uselib_local = 'minidjvu-mod'
     )
    
-    headers = bld.glob('include/minidjvu/*.h') + \
-              bld.glob('include/minidjvu/*/*.h')
+    headers = bld.glob('include/minidjvu-mod/*.h') + \
+              bld.glob('include/minidjvu-mod/*/*.h')
     for i in headers:
         bld.install_files('${PREFIX}/' + i, i)

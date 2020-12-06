@@ -1,3 +1,9 @@
+minidjvu-mod (0.9m01) trusty; urgency=medium
+
+  * Initial Release of the fork on the Lunchpad
+
+ -- Alexander Trufanov <trufanovan@gmail.com>  Sun, 06 Dec 2020 08:11:00 +0300
+
 minidjvu (0.8.svn.2010.05.06+dfsg-6) unstable; urgency=medium
 
   [ Ondřej Nový ]

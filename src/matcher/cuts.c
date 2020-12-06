@@ -11,12 +11,12 @@
  */
 
 #include "../base/mdjvucfg.h"
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include <assert.h>
 
 
 /* Stuff for not using malloc in C++
- * (made by Leon Bottou; has no use in minidjvu,
+ * (made by Leon Bottou; has no use in minidjvu-mod,
  * but left here for potential DjVuLibre compatibility)
  */
 #ifdef __cplusplus

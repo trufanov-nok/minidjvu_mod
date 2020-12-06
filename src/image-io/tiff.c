@@ -9,7 +9,7 @@
     #define MDJVU_USE_TIFFIO
 #endif
 
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 #include <stdlib.h>
 
 MDJVU_IMPLEMENT int mdjvu_have_tiff_support(void)

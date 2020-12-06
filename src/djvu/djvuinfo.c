@@ -3,7 +3,7 @@
  */
 
 #include "../base/mdjvucfg.h"
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 
 #define DEFAULT_VERSION_STAMP 24
 #define DEFAULT_RESOLUTION 300 /* used only if unknown */

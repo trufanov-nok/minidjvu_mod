@@ -1,13 +1,13 @@
-nobase_include_HEADERS = minidjvu/jb2.h minidjvu/alg/classify.h		\
- minidjvu/alg/compress.h minidjvu/alg/split.h minidjvu/alg/render.h	\
- minidjvu/alg/smooth.h minidjvu/alg/alg.h minidjvu/alg/adjust_y.h	\
- minidjvu/alg/clean.h minidjvu/alg/nosubst.h minidjvu/alg/erosion.h	\
- minidjvu/alg/blitsort.h minidjvu/alg/delegate.h			\
- minidjvu/alg/average.h minidjvu/djvu/iff.h minidjvu/djvu/djvu.h	\
- minidjvu/image-io/tiff.h minidjvu/image-io/pbm.h			\
- minidjvu/image-io/image-io.h minidjvu/image-io/bmp.h			\
- minidjvu/minidjvu.h minidjvu/base/4bitmap.h minidjvu/base/1error.h	\
- minidjvu/base/3graymap.h minidjvu/base/0porting.h			\
- minidjvu/base/version.h minidjvu/base/6string.h			\
- minidjvu/base/5image.h minidjvu/base/base.h minidjvu/base/2io.h	\
- minidjvu/matcher.h
+nobase_include_HEADERS = minidjvu-mod/jb2.h minidjvu-mod/alg/classify.h		\
+ minidjvu-mod/alg/compress.h minidjvu-mod/alg/split.h minidjvu-mod/alg/render.h	\
+ minidjvu-mod/alg/smooth.h minidjvu-mod/alg/alg.h minidjvu-mod/alg/adjust_y.h	\
+ minidjvu-mod/alg/clean.h minidjvu-mod/alg/nosubst.h minidjvu-mod/alg/erosion.h	\
+ minidjvu-mod/alg/blitsort.h minidjvu-mod/alg/delegate.h			\
+ minidjvu-mod/alg/average.h minidjvu-mod/djvu/iff.h minidjvu-mod/djvu/djvu.h	\
+ minidjvu-mod/image-io/tiff.h minidjvu-mod/image-io/pbm.h			\
+ minidjvu-mod/image-io/image-io.h minidjvu-mod/image-io/bmp.h			\
+ minidjvu-mod/minidjvu-mod.h minidjvu-mod/base/4bitmap.h minidjvu-mod/base/1error.h	\
+ minidjvu-mod/base/3graymap.h minidjvu-mod/base/0porting.h			\
+ minidjvu-mod/base/version.h minidjvu-mod/base/6string.h			\
+ minidjvu-mod/base/5image.h minidjvu-mod/base/base.h minidjvu-mod/base/2io.h	\
+ minidjvu-mod/matcher.h

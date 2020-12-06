@@ -1,5 +1,5 @@
 /*
- * minidjvu.h - the main include file for the library, includes all others
+ * minidjvu-mod.h - the main include file for the library, includes all others
  */
 
 #ifndef MINIDJVU_H

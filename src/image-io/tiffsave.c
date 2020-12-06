@@ -9,7 +9,7 @@
     #define MDJVU_USE_TIFFIO
 #endif
 
-#include <minidjvu/minidjvu.h>
+#include <minidjvu-mod/minidjvu-mod.h>
 
 #ifdef HAVE_LIBTIFF
 
