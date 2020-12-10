@@ -571,7 +571,9 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     }
 
     int block;
-#pragma omp parallel for schedule(static, 1) // no need to check _OPENMP as unsupported pragmas are ignored
+    int processed_pages = 0;
+// no need to check _OPENMP as unsupported pragmas are ignored
+#pragma omp parallel for schedule(static, 1) shared(processed_pages)
     for (block = 0; block < ndicts; block++) {
         mdjvu_image_t *images = MDJVU_MALLOCV(mdjvu_image_t, pages_per_dict);
         int32 pages_compressed = block*pages_per_dict;
@@ -627,8 +629,13 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
             }
 
             mdjvu_image_destroy(images[i]);
-            if (report)
+            if (report) {
                 printf(_("Saving: %d of %d completed\n"), pages_compressed + i + 1, n);
+                processed_pages++;
+                float res = 100.0*processed_pages/n;
+                printf(_("[%02d."), (int)res); //ensure dot as delimiter as in C locale
+                printf(_("%02d%%]\n"), (int)(100*(res - (int)res)));
+            }
         }
         mdjvu_image_destroy(dict);
         //        pages_compressed += pages_to_compress;
