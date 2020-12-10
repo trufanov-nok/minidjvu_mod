@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Minidjvu 0.9m01\n"
 "Report-Msgid-Bugs-To: alexios@thessalonica.org.ru\n"
-"POT-Creation-Date: 2020-12-06 17:58+0300\n"
+"POT-Creation-Date: 2020-12-10 23:49+0300\n"
 "PO-Revision-Date: 2009-06-27 14:05+0400\n"
 "Last-Translator: Alexey Kryukov <alexios@thessalonica.org.ru>\n"
 "Language-Team: Russian <ru@li.org>\n"
@@ -453,10 +453,20 @@ msgstr ""
 
 #: tools/minidjvu-mod.c:188
 #, c-format
+msgid "    -u, --unbuffered:              unbuffered output to console\n"
+msgstr ""
+
+#: tools/minidjvu-mod.c:189
+#, c-format
 msgid "    -v, --verbose:                 print messages about everything\n"
 msgstr "    -v, --verbose:                 сообщать обо всех операциях\n"
 
-#: tools/minidjvu-mod.c:189
+#: tools/minidjvu-mod.c:190
+#, c-format
+msgid "    -w, --warnings:                do not suppress TIFF warnings\n"
+msgstr "    -w, --warnings:                не подавлять предупреждения TIFF\n"
+
+#: tools/minidjvu-mod.c:191
 #, fuzzy, c-format
 msgid ""
 "    -X, --Xtension:                file extension for shared dictionary "
@@ -465,77 +475,72 @@ msgstr ""
 "    -e, --erosion                  пожертвовать качеством ради выигрыша в "
 "объеме\n"
 
-#: tools/minidjvu-mod.c:190
-#, c-format
-msgid "    -w, --warnings:                do not suppress TIFF warnings\n"
-msgstr "    -w, --warnings:                не подавлять предупреждения TIFF\n"
-
-#: tools/minidjvu-mod.c:191
+#: tools/minidjvu-mod.c:192
 #, c-format
 msgid "See the man page for detailed description of each option.\n"
 msgstr "Подробное описание всех параметров содержится в руководстве man.\n"
 
-#: tools/minidjvu-mod.c:219
+#: tools/minidjvu-mod.c:220
 #, c-format
 msgid "loading a DjVu page from `%s'\n"
 msgstr "загрузка страницы DjVu из файла `%s'\n"
 
-#: tools/minidjvu-mod.c:228
+#: tools/minidjvu-mod.c:229
 #, c-format
 msgid "loaded; the page has %d bitmaps and %d blits\n"
 msgstr "загрузка завершена; страница содержит %d картинок и %d блитов\n"
 
-#: tools/minidjvu-mod.c:273
+#: tools/minidjvu-mod.c:274
 #, c-format
 msgid "encoding to `%s'\n"
 msgstr "кодирование в файл `%s'\n"
 
-#: tools/minidjvu-mod.c:289
+#: tools/minidjvu-mod.c:290
 #, c-format
 msgid "loading from Windows BMP file `%s'\n"
 msgstr "загрузка изображения из файла Windows BMP `%s'\n"
 
-#: tools/minidjvu-mod.c:294
+#: tools/minidjvu-mod.c:295
 #, c-format
 msgid "loading from TIFF file `%s'\n"
 msgstr "загрузка изображения из файла TIFF `%s'\n"
 
-#: tools/minidjvu-mod.c:301
+#: tools/minidjvu-mod.c:302
 #, c-format
 msgid "resolution is %d dpi\n"
 msgstr "разрешение составляет %d dpi\n"
 
-#: tools/minidjvu-mod.c:310 tools/minidjvu-mod.c:382
+#: tools/minidjvu-mod.c:311 tools/minidjvu-mod.c:383
 #, c-format
 msgid "bitmap %d x %d rendered\n"
 msgstr "загружено битовое изображение %d x %d\n"
 
-#: tools/minidjvu-mod.c:317
+#: tools/minidjvu-mod.c:318
 #, c-format
 msgid "loading from PBM file `%s'\n"
 msgstr "загрузка изображения из файла PBM `%s'\n"
 
-#: tools/minidjvu-mod.c:329 tools/minidjvu-mod.c:389
+#: tools/minidjvu-mod.c:330 tools/minidjvu-mod.c:390
 #, c-format
 msgid "smoothing the bitmap\n"
 msgstr "сглаживание битового изображения\n"
 
-#: tools/minidjvu-mod.c:343
+#: tools/minidjvu-mod.c:344
 #, c-format
 msgid "saving to Windows BMP file `%s'\n"
 msgstr "сохранение в файл Windows BMP `%s'\n"
 
-#: tools/minidjvu-mod.c:348
+#: tools/minidjvu-mod.c:349
 #, c-format
 msgid "saving to TIFF file `%s'\n"
 msgstr "сохранение в файл TIFF `%s'\n"
 
-#: tools/minidjvu-mod.c:355
+#: tools/minidjvu-mod.c:356
 #, c-format
 msgid "saving to PBM file `%s'\n"
 msgstr "сохранение в файл PBM `%s'\n"
 
-#: tools/minidjvu-mod.c:373
+#: tools/minidjvu-mod.c:374
 #, c-format
 msgid ""
 "\n"
@@ -544,7 +549,7 @@ msgstr ""
 "\n"
 "РАСШИФРОВКА\n"
 
-#: tools/minidjvu-mod.c:374 tools/minidjvu-mod.c:429
+#: tools/minidjvu-mod.c:375 tools/minidjvu-mod.c:430
 #, c-format
 msgid ""
 "________\n"
@@ -553,27 +558,27 @@ msgstr ""
 "___________\n"
 "\n"
 
-#: tools/minidjvu-mod.c:401
+#: tools/minidjvu-mod.c:402
 #, c-format
 msgid "splitting the bitmap into pieces\n"
 msgstr "разбивка битового изображение на участки\n"
 
-#: tools/minidjvu-mod.c:406
+#: tools/minidjvu-mod.c:407
 #, c-format
 msgid "the split image has %d pieces\n"
 msgstr "после разбиения картинка состоит из %d участков\n"
 
-#: tools/minidjvu-mod.c:411
+#: tools/minidjvu-mod.c:412
 #, c-format
 msgid "cleaning\n"
 msgstr "очистка\n"
 
-#: tools/minidjvu-mod.c:415
+#: tools/minidjvu-mod.c:416
 #, c-format
 msgid "the cleaned image has %d pieces\n"
 msgstr "после очистки картинка состоит из %d участков\n"
 
-#: tools/minidjvu-mod.c:428
+#: tools/minidjvu-mod.c:429
 #, c-format
 msgid ""
 "\n"
@@ -582,7 +587,7 @@ msgstr ""
 "\n"
 "КОДИРОВАНИЕ\n"
 
-#: tools/minidjvu-mod.c:444
+#: tools/minidjvu-mod.c:445
 #, c-format
 msgid ""
 "\n"
@@ -591,7 +596,7 @@ msgstr ""
 "\n"
 "ФИЛЬТРОВКА\n"
 
-#: tools/minidjvu-mod.c:445
+#: tools/minidjvu-mod.c:446
 #, c-format
 msgid ""
 "_________\n"
@@ -600,29 +605,29 @@ msgstr ""
 "__________\n"
 "\n"
 
-#: tools/minidjvu-mod.c:490
+#: tools/minidjvu-mod.c:491
 #, c-format
 msgid "when encoding many pages, output file must be DjVu\n"
 msgstr ""
 "при многостраничном кодировании результирующий файл должен быть в формате "
 "DjVu\n"
 
-#: tools/minidjvu-mod.c:498
+#: tools/minidjvu-mod.c:499
 #, fuzzy, c-format
 msgid "Could not create a temporary file. (GetTempPathA)\n"
 msgstr "Не удалось создать временный файл\n"
 
-#: tools/minidjvu-mod.c:510
+#: tools/minidjvu-mod.c:511
 #, fuzzy, c-format
 msgid "Could not create a temporary file. (GetTempFileNameA)\n"
 msgstr "Не удалось создать временный файл\n"
 
-#: tools/minidjvu-mod.c:517
+#: tools/minidjvu-mod.c:518
 #, c-format
 msgid "Could not create a temporary file\n"
 msgstr "Не удалось создать временный файл\n"
 
-#: tools/minidjvu-mod.c:523
+#: tools/minidjvu-mod.c:524
 #, c-format
 msgid ""
 "\n"
@@ -631,7 +636,7 @@ msgstr ""
 "\n"
 "МНОГОСТРАНИЧНОЕ КОДИРОВАНИЕ\n"
 
-#: tools/minidjvu-mod.c:524
+#: tools/minidjvu-mod.c:525
 #, c-format
 msgid ""
 "__________________\n"
@@ -640,42 +645,42 @@ msgstr ""
 "___________________________\n"
 "\n"
 
-#: tools/minidjvu-mod.c:525
+#: tools/minidjvu-mod.c:526
 #, c-format
 msgid "%d pages total\n"
 msgstr "всего %d страниц\n"
 
-#: tools/minidjvu-mod.c:592
+#: tools/minidjvu-mod.c:593
 #, c-format
 msgid "Loading: %d of %d completed\n"
 msgstr "Загрузка: выполнено %d из %d\n"
 
-#: tools/minidjvu-mod.c:616
+#: tools/minidjvu-mod.c:617
 #, c-format
 msgid "saving page #%d into %s using dictionary %s\n"
 msgstr "сохранение страницы #%d в файл %s с использованием словаря %s\n"
 
-#: tools/minidjvu-mod.c:630
+#: tools/minidjvu-mod.c:631
 #, c-format
 msgid "Saving: %d of %d completed\n"
 msgstr "Сохранение: выполнено %d из %d\n"
 
-#: tools/minidjvu-mod.c:733
+#: tools/minidjvu-mod.c:734
 #, c-format
 msgid "bad --pages-per-dict value\n"
 msgstr "неподходящее значение --pages-per-dict\n"
 
-#: tools/minidjvu-mod.c:745
+#: tools/minidjvu-mod.c:746
 #, c-format
 msgid "bad resolution\n"
 msgstr "неподходящее разрешение\n"
 
-#: tools/minidjvu-mod.c:780
+#: tools/minidjvu-mod.c:786
 #, c-format
 msgid "unknown option: %s\n"
 msgstr "неизвестный параметр: %s\n"
 
-#: tools/minidjvu-mod.c:835
+#: tools/minidjvu-mod.c:841
 #, c-format
 msgid "alive_bitmap_counter = %d\n"
 msgstr "счетчик битовых изображений = %d\n"

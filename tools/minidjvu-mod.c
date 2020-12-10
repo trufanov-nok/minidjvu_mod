@@ -185,9 +185,10 @@ static void show_usage_and_exit(void)           /* {{{ */
     printf(_("                                   and number of CPU cores minus 1 otherwise\n"));
     printf(_("                                   Specify -t 1 to disable multithreading\n"));
 #endif
+    printf(_("    -u, --unbuffered:              unbuffered output to console\n"));
     printf(_("    -v, --verbose:                 print messages about everything\n"));
-    printf(_("    -X, --Xtension:                file extension for shared dictionary files\n"));
     printf(_("    -w, --warnings:                do not suppress TIFF warnings\n"));
+    printf(_("    -X, --Xtension:                file extension for shared dictionary files\n"));
     printf(_("See the man page for detailed description of each option.\n"));
     exit(2);
 }                   /* }}} */
@@ -775,6 +776,11 @@ static int process_options(int argc, char **argv)
             max_threads = atoi(argv[i]);
         }
 #endif
+        else if (same_option(option, "unbuffered"))
+        {
+            setbuf(stdout, NULL);
+            setbuf(stderr, NULL);
+        }
         else
         {
             fprintf(stderr, _("unknown option: %s\n"), argv[i]);
