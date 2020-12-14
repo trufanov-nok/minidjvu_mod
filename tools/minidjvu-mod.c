@@ -19,27 +19,77 @@
 /* TODO: remove duplicated code */
 
 
-/* options */
-int32 dpi = 300;
-int32 pages_per_dict = 10; /* 0 means infinity */
-int dpi_specified = 0;
-int verbose = 0;
-int smooth = 0;
-int averaging = 0;
-int match = 0;
-int Match = 0;
-int aggression = 100;
-int classifier = 3;
-int erosion = 0;
-int clean = 0;
-int report = 0;
-int no_prototypes = 0;
-int warnings = 0;
-int indirect = 0;
-const char* dict_suffix = NULL;
-#ifdef _OPENMP
-int max_threads = 0;
-#endif
+struct AppOptions
+{
+    int32 dpi;
+    int32 pages_per_dict; /* 0 means infinity */
+    int dpi_specified;
+    int verbose;
+    int smooth;
+    int averaging;
+    int match;
+    int Match;
+    int aggression;
+    int classifier;
+    int erosion;
+    int clean;
+    int report;
+    int no_prototypes;
+    int warnings;
+    int indirect;
+    const char* dict_suffix;
+    #ifdef _OPENMP
+    int max_threads;
+    #endif
+};
+
+struct AppOptions options;
+
+static void init_default_options() {
+    /* options */
+    options.dpi = 300;
+    options.pages_per_dict = 10; /* 0 means infinity */
+    options.dpi_specified = 0;
+    options.verbose = 0;
+    options.smooth = 0;
+    options.averaging = 0;
+    options.match = 0;
+    options.Match = 0;
+    options.aggression = 100;
+    options.classifier = 3;
+    options.erosion = 0;
+    options.clean = 0;
+    options.report = 0;
+    options.no_prototypes = 0;
+    options.warnings = 0;
+    options.indirect = 0;
+    options.dict_suffix = NULL;
+    #ifdef _OPENMP
+    options.max_threads = 0;
+    #endif
+}
+
+///* options */
+//int32 dpi = 300;
+//int32 pages_per_dict = 10; /* 0 means infinity */
+//int dpi_specified = 0;
+//int verbose = 0;
+//int smooth = 0;
+//int averaging = 0;
+//int match = 0;
+//int Match = 0;
+//int aggression = 100;
+//int classifier = 3;
+//int erosion = 0;
+//int clean = 0;
+//int report = 0;
+//int no_prototypes = 0;
+//int warnings = 0;
+//int indirect = 0;
+//const char* dict_suffix = NULL;
+//#ifdef _OPENMP
+//int max_threads = 0;
+//#endif
 
 /* ========================================================================= */
 
@@ -217,14 +267,14 @@ static mdjvu_image_t load_image(const char *path)
     mdjvu_error_t error;
     mdjvu_image_t image;
 
-    if (verbose) printf(_("loading a DjVu page from `%s'\n"), path);
+    if (options.verbose) printf(_("loading a DjVu page from `%s'\n"), path);
     image = mdjvu_load_djvu_page(path, &error);
     if (!image)
     {
         fprintf(stderr, "%s: %s\n", path, mdjvu_get_error_message(error));
         exit(1);
     }
-    if (verbose)
+    if (options.verbose)
     {
         printf(_("loaded; the page has %d bitmaps and %d blits\n"),
                mdjvu_image_get_bitmap_count(image),
@@ -236,13 +286,13 @@ static mdjvu_image_t load_image(const char *path)
 static mdjvu_matcher_options_t get_matcher_options(void)
 {
     mdjvu_matcher_options_t m_options = NULL;
-    if (match || Match)
+    if (options.match || options.Match)
     {
         m_options = mdjvu_matcher_options_create();
         mdjvu_use_matcher_method(m_options, MDJVU_MATCHER_PITH_2);
-        if (Match)
+        if (options.Match)
             mdjvu_use_matcher_method(m_options, MDJVU_MATCHER_RAMPAGE);
-        mdjvu_set_aggression(m_options, aggression);
+        mdjvu_set_aggression(m_options, options.aggression);
     }
     return m_options;
 }
@@ -251,7 +301,7 @@ static mdjvu_classify_options_t get_classify_options(void)
 {
     mdjvu_classify_options_t m_options = NULL;
 	m_options = mdjvu_classify_options_create();
-	mdjvu_set_classifier(m_options, classifier);
+    mdjvu_set_classifier(m_options, options.classifier);
 	return m_options;
 }
 
@@ -259,21 +309,21 @@ static void sort_and_save_image(mdjvu_image_t image, const char *path)
 {
     mdjvu_error_t error;
 
-    mdjvu_compression_options_t options = mdjvu_compression_options_create();
-    mdjvu_matcher_options_t m_opt = get_matcher_options();
-    mdjvu_set_classify_options(m_opt, get_classify_options());
-    mdjvu_set_matcher_options(options, m_opt);
+    mdjvu_compression_options_t compr_opts = mdjvu_compression_options_create();
+    mdjvu_matcher_options_t matcher_opts = get_matcher_options();
+    mdjvu_set_classify_options(matcher_opts, get_classify_options());
+    mdjvu_set_matcher_options(compr_opts, matcher_opts);
 
-    mdjvu_set_clean(options, clean);
-    mdjvu_set_verbose(options, verbose);
-    mdjvu_set_no_prototypes(options, no_prototypes);
-    mdjvu_set_averaging(options, averaging);
-    mdjvu_compress_image(image, options);
-    mdjvu_compression_options_destroy(options);
+    mdjvu_set_clean(compr_opts, options.clean);
+    mdjvu_set_verbose(compr_opts, options.verbose);
+    mdjvu_set_no_prototypes(compr_opts, options.no_prototypes);
+    mdjvu_set_averaging(compr_opts, options.averaging);
+    mdjvu_compress_image(image, compr_opts);
+    mdjvu_compression_options_destroy(compr_opts);
 
-    if (verbose) printf(_("encoding to `%s'\n"), path);
+    if (options.verbose) printf(_("encoding to `%s'\n"), path);
 
-    if (!mdjvu_save_djvu_page(image, path, NULL, &error, erosion))
+    if (!mdjvu_save_djvu_page(image, path, NULL, &error, options.erosion))
     {
         fprintf(stderr, "%s: %s\n", path, mdjvu_get_error_message(error));
         exit(1);
@@ -287,26 +337,26 @@ static mdjvu_bitmap_t load_bitmap(const char *path, int tiff_idx)
 
     if (decide_if_bmp(path))
     {
-        if (verbose) printf(_("loading from Windows BMP file `%s'\n"), path);
+        if (options.verbose) printf(_("loading from Windows BMP file `%s'\n"), path);
         bitmap = mdjvu_load_bmp(path, &error);
     }
     else if (decide_if_tiff(path))
     {
-        if (verbose) printf(_("loading from TIFF file `%s'\n"), path);
-        if (!warnings)
+        if (options.verbose) printf(_("loading from TIFF file `%s'\n"), path);
+        if (!options.warnings)
             mdjvu_disable_tiff_warnings();
-        if (dpi_specified)
+        if (options.dpi_specified)
             bitmap = mdjvu_load_tiff(path, NULL, &error, tiff_idx);
         else
-            bitmap = mdjvu_load_tiff(path, &dpi, &error, tiff_idx);
-        if (verbose) printf(_("resolution is %d dpi\n"), dpi);
+            bitmap = mdjvu_load_tiff(path, &options.dpi, &error, tiff_idx);
+        if (options.verbose) printf(_("resolution is %d dpi\n"), options.dpi);
     }
     else if (decide_if_djvu(path))
     {
         mdjvu_image_t image = load_image(path);
         bitmap = mdjvu_render(image);
         mdjvu_image_destroy(image);
-        if (verbose)
+        if (options.verbose)
         {
             printf(_("bitmap %d x %d rendered\n"),
                    mdjvu_bitmap_get_width(bitmap),
@@ -315,7 +365,7 @@ static mdjvu_bitmap_t load_bitmap(const char *path, int tiff_idx)
     }
     else
     {
-        if (verbose) printf(_("loading from PBM file `%s'\n"), path);
+        if (options.verbose) printf(_("loading from PBM file `%s'\n"), path);
         bitmap = mdjvu_load_pbm(path, &error);
     }
 
@@ -325,9 +375,9 @@ static mdjvu_bitmap_t load_bitmap(const char *path, int tiff_idx)
         exit(1);
     }
 
-    if (smooth)
+    if (options.smooth)
     {
-        if (verbose) printf(_("smoothing the bitmap\n"));
+        if (options.verbose) printf(_("smoothing the bitmap\n"));
         mdjvu_smooth(bitmap);
     }
 
@@ -341,19 +391,19 @@ static void save_bitmap(mdjvu_bitmap_t bitmap, const char *path)
 
     if (decide_if_bmp(path))
     {
-        if (verbose) printf(_("saving to Windows BMP file `%s'\n"), path);
-        result = mdjvu_save_bmp(bitmap, path, dpi, &error);
+        if (options.verbose) printf(_("saving to Windows BMP file `%s'\n"), path);
+        result = mdjvu_save_bmp(bitmap, path, options.dpi, &error);
     }
     else if (decide_if_tiff(path))
     {
-        if (verbose) printf(_("saving to TIFF file `%s'\n"), path);
-        if (!warnings)
+        if (options.verbose) printf(_("saving to TIFF file `%s'\n"), path);
+        if (!options.warnings)
             mdjvu_disable_tiff_warnings();
         result = mdjvu_save_tiff(bitmap, path, &error);
     }
     else
     {
-        if (verbose) printf(_("saving to PBM file `%s'\n"), path);
+        if (options.verbose) printf(_("saving to PBM file `%s'\n"), path);
         result = mdjvu_save_pbm(bitmap, path, &error);
     }
 
@@ -371,23 +421,25 @@ static void decode(int argc, char **argv)
     mdjvu_image_t image;    /* a sequence of blits (what is stored in DjVu) */
     mdjvu_bitmap_t bitmap;  /* the result                                   */
 
-    if (verbose) printf(_("\nDECODING\n"));
-    if (verbose) printf(_("________\n\n"));
+    if (options.verbose) {
+        printf(_("\nDECODING\n"));
+        printf(_("________\n\n"));
+    }
 
     image = load_image(argv[1]);
     bitmap = mdjvu_render(image);
     mdjvu_image_destroy(image);
 
-    if (verbose)
+    if (options.verbose)
     {
         printf(_("bitmap %d x %d rendered\n"),
                mdjvu_bitmap_get_width(bitmap),
                mdjvu_bitmap_get_height(bitmap));
     }
 
-    if (smooth)
+    if (options.smooth)
     {
-        if (verbose) printf(_("smoothing the bitmap\n"));
+        if (options.verbose) printf(_("smoothing the bitmap\n"));
         mdjvu_smooth(bitmap);
     }
 
@@ -399,19 +451,19 @@ static void decode(int argc, char **argv)
 static mdjvu_image_t split_and_destroy(mdjvu_bitmap_t bitmap)
 {
     mdjvu_image_t image;
-    if (verbose) printf(_("splitting the bitmap into pieces\n"));
-    image = mdjvu_split(bitmap, dpi, /* options:*/ NULL);
+    if (options.verbose) printf(_("splitting the bitmap into pieces\n"));
+    image = mdjvu_split(bitmap, options.dpi, /* options:*/ NULL);
     mdjvu_bitmap_destroy(bitmap);
-    if (verbose)
+    if (options.verbose)
     {
         printf(_("the split image has %d pieces\n"),
                 mdjvu_image_get_blit_count(image));
     }
-    if (clean)
+    if (options.clean)
     {
-        if (verbose) printf(_("cleaning\n"));
+        if (options.verbose) printf(_("cleaning\n"));
         mdjvu_clean(image);
-        if (verbose)
+        if (options.verbose)
         {
             printf(_("the cleaned image has %d pieces\n"),
                     mdjvu_image_get_blit_count(image));
@@ -426,8 +478,10 @@ static void encode(int argc, char **argv)
     mdjvu_bitmap_t bitmap;
     mdjvu_image_t image;
 
-    if (verbose) printf(_("\nENCODING\n"));
-    if (verbose) printf(_("________\n\n"));
+    if (options.verbose) {
+        printf(_("\nENCODING\n"));
+        printf(_("________\n\n"));
+    }
 
     bitmap = load_bitmap(argv[1], 0);
 
@@ -442,8 +496,10 @@ static void filter(int argc, char **argv)
 {
     mdjvu_bitmap_t bitmap;
 
-    if (verbose) printf(_("\nFILTERING\n"));
-    if (verbose) printf(_("_________\n\n"));
+    if (options.verbose) {
+        printf(_("\nFILTERING\n"));
+        printf(_("_________\n\n"));
+    }
 
     bitmap = load_bitmap(argv[1], 0);
     save_bitmap(bitmap, argv[2]);
@@ -469,13 +525,13 @@ static const char *strip_dir(const char *path)
 
 static void multipage_encode(int n, char **pages, char *outname, uint32 multipage_tiff)
 {
-    int ndicts = (pages_per_dict <= 0)? 1 :
-                                        (n % pages_per_dict > 0) ?  (int) fabs(n/pages_per_dict) + 1:
-                                                                    (int) fabs(n/pages_per_dict);
+    int ndicts = (options.pages_per_dict <= 0)? 1 :
+                                        (n % options.pages_per_dict > 0) ?  (int) fabs((float)n/options.pages_per_dict) + 1:
+                                                                    (int) fabs((float)n/options.pages_per_dict);
     const int el_size = n + ndicts;
     char **elements = MDJVU_MALLOCV(char *, el_size);
     int  *sizes     = MDJVU_MALLOCV(int, el_size);
-    mdjvu_compression_options_t options;
+    mdjvu_compression_options_t compr_opts;
     mdjvu_error_t error;
 
     FILE *f;
@@ -485,14 +541,14 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     memset(tempfilenames, 0, ndicts*(MAX_PATH+1));
 #endif
 
-    match = 1;
+    options.match = 1;
 
     if (!decide_if_djvu(outname)) {
         fprintf(stderr, _("when encoding many pages, output file must be DjVu\n"));
         exit(1);
     }
 
-    if (!indirect) {
+    if (!options.indirect) {
 #ifdef _WIN32
         char pathname[MAX_PATH+1];
         if (GetTempPathA(MAX_PATH+1, pathname) == 0) {
@@ -521,45 +577,48 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
         }
     }
 
-    if (verbose) printf(_("\nMULTIPAGE ENCODING\n"));
-    if (verbose) printf(_("__________________\n\n"));
-    if (verbose) printf(_("%d pages total\n"), n);
+    if (options.verbose) {
+        printf(_("\nMULTIPAGE ENCODING\n"));
+        printf(_("__________________\n\n"));
+        printf(_("%d pages total\n"), n);
+    }
 
-    options = mdjvu_compression_options_create();
+    compr_opts = mdjvu_compression_options_create();
     mdjvu_matcher_options_t m_opt = get_matcher_options();
     mdjvu_set_classify_options(m_opt, get_classify_options());
-    mdjvu_set_matcher_options(options, m_opt);
+    mdjvu_set_matcher_options(compr_opts, m_opt);
 
-    mdjvu_set_clean(options, clean);
-    mdjvu_set_verbose(options, verbose);
-    mdjvu_set_no_prototypes(options, no_prototypes);
-    mdjvu_set_report(options, report);
-    mdjvu_set_averaging(options, averaging);
-    mdjvu_set_report_total_pages(options, n);
+    mdjvu_set_clean(compr_opts, options.clean);
+    mdjvu_set_verbose(compr_opts, options.verbose);
+    mdjvu_set_no_prototypes(compr_opts, options.no_prototypes);
+    mdjvu_set_report(compr_opts, options.report);
+    mdjvu_set_averaging(compr_opts, options.averaging);
+    mdjvu_set_report_total_pages(compr_opts, n);
 
     /* compressing */
-    if (pages_per_dict <= 0) pages_per_dict = n;
-    if (pages_per_dict > n) pages_per_dict = n;
+    if (options.pages_per_dict <= 0) options.pages_per_dict = n;
+    if (options.pages_per_dict > n) options.pages_per_dict = n;
 
 #ifdef _OPENMP
-    if (!max_threads) {
+    if (!options.max_threads) {
         if (omp_get_num_procs() > 2)
             omp_set_num_threads( omp_get_num_procs() - 1 );
     } else {
-        omp_set_num_threads( max_threads );
+        omp_set_num_threads( options.max_threads );
     }
 #endif
 
     // initialize elements with filenames as it can't be done in parallel blocks without critical sections
     int el = 0;
     for (int j = 0; j < ndicts; j++) {
-        const int32 pages_compressed = j*pages_per_dict;
-        const int32 pages_to_compress = pages_compressed + pages_per_dict > n ? n - pages_compressed : pages_per_dict;
+        const int32 pages_compressed = j*options.pages_per_dict;
+        const int32 pages_to_compress = pages_compressed + options.pages_per_dict > n ? n - pages_compressed
+                                                                                      : options.pages_per_dict;
 
         char * path = get_page_or_dict_name(elements, el, strip_dir(pages[multipage_tiff ? 0 : pages_compressed]));
-        char * dict_name = MDJVU_MALLOCV(char, strlen(path) + strlen(dict_suffix) - 2);
+        char * dict_name = MDJVU_MALLOCV(char, strlen(path) + strlen(options.dict_suffix) - 2);
         strcpy(dict_name, path);
-        replace_suffix(dict_name, dict_suffix);
+        replace_suffix(dict_name, options.dict_suffix);
         elements[el++] = dict_name;
         for (int i = 0; i < pages_to_compress; i++)
         {
@@ -575,12 +634,12 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
 // no need to check _OPENMP as unsupported pragmas are ignored
 #pragma omp parallel for schedule(static, 1) shared(processed_pages)
     for (block = 0; block < ndicts; block++) {
-        mdjvu_image_t *images = MDJVU_MALLOCV(mdjvu_image_t, pages_per_dict);
-        int32 pages_compressed = block*pages_per_dict;
-        int32 pages_to_compress = pages_compressed + pages_per_dict > n ? n - pages_compressed : pages_per_dict;
+        mdjvu_image_t *images = MDJVU_MALLOCV(mdjvu_image_t, options.pages_per_dict);
+        int32 pages_compressed = block*options.pages_per_dict;
+        int32 pages_to_compress = pages_compressed + options.pages_per_dict > n ? n - pages_compressed : options.pages_per_dict;
         int el = pages_compressed + block;
 
-        mdjvu_set_report_start_page(options, pages_compressed + 1);
+        mdjvu_set_report_start_page(compr_opts, pages_compressed + 1);
 
 
         mdjvu_bitmap_t bitmap;
@@ -591,17 +650,17 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
             else
                 bitmap = load_bitmap(pages[pages_compressed + i], 0);
             images[i] = split_and_destroy(bitmap);
-            if (report)
+            if (options.report)
                 printf(_("Loading: %d of %d completed\n"), pages_compressed + i + 1, n);
         }
 
-        mdjvu_image_t dict = mdjvu_compress_multipage(pages_to_compress, images, options);
+        mdjvu_image_t dict = mdjvu_compress_multipage(pages_to_compress, images, compr_opts);
 
         const char * dict_name = elements[el];
-        if (!indirect)
-            sizes[el] = mdjvu_file_save_djvu_dictionary(dict, (mdjvu_file_t) tfs[block], 0, &error, erosion);
+        if (!options.indirect)
+            sizes[el] = mdjvu_file_save_djvu_dictionary(dict, (mdjvu_file_t) tfs[block], 0, &error, options.erosion);
         else
-            sizes[el] = mdjvu_save_djvu_dictionary(dict, dict_name, &error, erosion);
+            sizes[el] = mdjvu_save_djvu_dictionary(dict, dict_name, &error, options.erosion);
 
         if (!sizes[el])
         {
@@ -615,13 +674,13 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
         {
             const char * path = elements[el];
 
-            if (verbose)
+            if (options.verbose)
                 printf(_("saving page #%d into %s using dictionary %s\n"), pages_compressed + i + 1, path, dict_name);
 
-            if (!indirect)
-                sizes[el] = mdjvu_file_save_djvu_page(images[i], (mdjvu_file_t) tfs[block], strip_dir(dict_name), 0, &error, erosion);
+            if (!options.indirect)
+                sizes[el] = mdjvu_file_save_djvu_page(images[i], (mdjvu_file_t) tfs[block], strip_dir(dict_name), 0, &error, options.erosion);
             else
-                sizes[el] = mdjvu_save_djvu_page(images[i], path, strip_dir(dict_name), &error, erosion);
+                sizes[el] = mdjvu_save_djvu_page(images[i], path, strip_dir(dict_name), &error, options.erosion);
             if (!sizes[el])
             {
                 fprintf(stderr, "%s: %s\n", path, mdjvu_get_error_message(error));
@@ -629,7 +688,7 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
             }
 
             mdjvu_image_destroy(images[i]);
-            if (report) {
+            if (options.report) {
                 printf(_("Saving: %d of %d completed\n"), pages_compressed + i + 1, n);
                 processed_pages++;
                 float res = 100.0*processed_pages/n;
@@ -642,7 +701,7 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
         MDJVU_FREEV(images);
     } //  #pragma omp parallel
 
-    if (!indirect)
+    if (!options.indirect)
     {
         f = fopen(outname, "wb");
         if (!f)
@@ -672,7 +731,7 @@ static void multipage_encode(int n, char **pages, char *outname, uint32 multipag
     MDJVU_FREEV(sizes);
 
     /* destroying */
-    mdjvu_compression_options_destroy(options);
+    mdjvu_compression_options_destroy(compr_opts);
 }
 
 /* same_option(foo, "opt") returns 1 in three cases:
@@ -696,47 +755,47 @@ static int process_options(int argc, char **argv)
     {
         char *option = argv[i] + 1;
         if (same_option(option, "verbose"))
-            verbose = 1;
+            options.verbose = 1;
         else if (same_option(option, "smooth"))
-            smooth = 1;
+            options.smooth = 1;
         else if (same_option(option, "match"))
-            match = 1;
+            options.match = 1;
         else if (same_option(option, "Match"))
-            Match = 1;
+            options.Match = 1;
         else if (same_option(option, "no-prototypes"))
-            no_prototypes = 1;
+            options.no_prototypes = 1;
         else if (same_option(option, "erosion"))
-            erosion = 1;
+            options.erosion = 1;
         else if (same_option(option, "clean"))
-            clean = 1;
+            options.clean = 1;
         else if (same_option(option, "warnings"))
-            warnings = 1;
+            options.warnings = 1;
         else if (same_option(option, "report"))
-            report = 1;
+            options.report = 1;
         else if (same_option(option, "Averaging"))
-            averaging = 1;
+            options.averaging = 1;
         else if (same_option(option, "lossy"))
         {
-            smooth = 1;
-            match = 1;
-            erosion = 1;
-            clean = 1;
-            averaging = 1;
+            options.smooth = 1;
+            options.match = 1;
+            options.erosion = 1;
+            options.clean = 1;
+            options.averaging = 1;
         }
         else if (same_option(option, "Lossy"))
         {
-            smooth = 1;
-            Match = match = 1;
-            erosion = 1;
-            clean = 1;
-            averaging = 1;
+            options.smooth = 1;
+            options.Match = options.match = 1;
+            options.erosion = 1;
+            options.clean = 1;
+            options.averaging = 1;
         }
         else if (same_option(option, "pages-per-dict"))
         {
             i++;
             if (i == argc) show_usage_and_exit();
-            pages_per_dict = atoi(argv[i]);
-            if (pages_per_dict < 0)
+            options.pages_per_dict = atoi(argv[i]);
+            if (options.pages_per_dict < 0)
             {
                 fprintf(stderr, _("bad --pages-per-dict value\n"));
                 exit(2);
@@ -746,9 +805,9 @@ static int process_options(int argc, char **argv)
         {
             i++;
             if (i == argc) show_usage_and_exit();
-            dpi = atoi(argv[i]);
-            dpi_specified = 1;
-            if (dpi < 20 || dpi > 2000)
+            options.dpi = atoi(argv[i]);
+            options.dpi_specified = 1;
+            if (options.dpi < 20 || options.dpi > 2000)
             {
                 fprintf(stderr, _("bad resolution\n"));
                 exit(2);
@@ -758,29 +817,29 @@ static int process_options(int argc, char **argv)
         {
             i++;
             if (i == argc) show_usage_and_exit();
-            aggression = atoi(argv[i]);
-            match = 1;
+            options.aggression = atoi(argv[i]);
+            options.match = 1;
         }
         else if (same_option(option, "Classifier"))
         {
             i++;
             if (i == argc) show_usage_and_exit();
-            classifier = atoi(argv[i]);
+            options.classifier = atoi(argv[i]);
         }
         else if (same_option(option, "Xtension"))
         {
             i++;
             if (i == argc) show_usage_and_exit();
-            dict_suffix = argv[i];
+            options.dict_suffix = argv[i];
         }
         else if (same_option(option, "indirect"))
-            indirect = 1;
+            options.indirect = 1;
 #ifdef _OPENMP
         else if (same_option(option, "threads-max"))
         {
             i++;
             if (i == argc) show_usage_and_exit();
-            max_threads = atoi(argv[i]);
+            options.max_threads = atoi(argv[i]);
         }
 #endif
         else if (same_option(option, "unbuffered"))
@@ -799,6 +858,8 @@ static int process_options(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+    init_default_options();
+
     int arg_start;
 #ifdef HAVE_LIBTIFF
     int tiff_cnt;
@@ -812,7 +873,7 @@ int main(int argc, char **argv)
 
 
     arg_start = process_options(argc, argv);
-    if ( dict_suffix == NULL ) dict_suffix = "djbz";
+    if ( options.dict_suffix == NULL ) options.dict_suffix = "djbz";
 
     argc -= arg_start - 1;
     argv += arg_start - 1;
@@ -842,7 +903,7 @@ int main(int argc, char **argv)
             filter(argc, argv);
     }
 
-    if (verbose) printf("\n");
+    if (options.verbose) printf("\n");
 	#ifndef NDEBUG
 		if (alive_bitmap_counter)
            printf(_("alive_bitmap_counter = %d\n"), alive_bitmap_counter);
